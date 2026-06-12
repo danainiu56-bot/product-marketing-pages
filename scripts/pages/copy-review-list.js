@@ -7,6 +7,7 @@ let crFilterSkuQuery = '';
 let copyReviewCurrentFilters = {};
 let copyReviewCurrentListData = [];
 let copyAuditIssueMarks = [];
+let copyReviewActiveTab = '待审核';
 const COPY_REVIEW_DECISIONS_KEY = '__cursor_copy_review_decisions';
 
 const COPY_REVIEW_LIST_DATA = [
@@ -305,14 +306,6 @@ function copyReviewTemplate() {
             <select class="combo-select-right" id="cr-person-value" onchange="applyCopyReviewFilters()"></select>
           </div>
         </div>
-        <div class="filter-group">
-          <select class="filter-select" id="cr-status" onchange="applyCopyReviewFilters()">
-            <option value="">全部状态</option>
-            <option value="待审核">待审核</option>
-            <option value="已驳回">已驳回</option>
-            <option value="已通过">已通过</option>
-          </select>
-        </div>
         <div class="filter-actions">
           <button class="filter-btn" onclick="resetCopyReviewFilters()">重置</button>
         </div>
@@ -320,44 +313,17 @@ function copyReviewTemplate() {
       <div class="filter-applied" id="cr-applied"></div>
     </div>
 
+    <div class="cr-review-tabs" id="cr-review-tabs"></div>
+
     <div class="list-table-wrap">
-      <table class="list-data-table review-data-table">
-        <thead>
-          <tr>
-            <th style="width:120px;">需求类型</th>
-            <th style="width:60px;">站点</th>
-            <th style="width:100px;">品牌</th>
-            <th style="width:80px;">子品类</th>
-            <th style="width:170px;">产品名称</th>
-            <th style="width:120px;">SKU</th>
-            <th style="width:80px;">优先级</th>
-            <th style="width:110px;">事业部</th>
-            <th style="width:80px;">BU长</th>
-            <th style="width:100px;">需求提交人</th>
-            <th style="width:100px;">文案人员</th>
-            <th style="width:120px;">开卖时间</th>
-            <th style="width:120px;">期望交付时间</th>
-            <th style="width:160px;">提交审核时间</th>
-            <th style="width:160px;">审核时间</th>
-            <th style="width:90px;">审核状态</th>
-            <th style="width:160px;">操作</th>
-          </tr>
-        </thead>
+      <table class="list-data-table review-data-table cr-compact">
+        <thead id="cr-thead"></thead>
         <tbody id="cr-tbody"></tbody>
       </table>
     </div>
 
     <div class="list-pagination">
       <span>共 <strong id="cr-pg-total">0</strong> 条</span>
-      <button class="pg-btn">‹</button>
-      <button class="pg-btn active">2</button>
-      <span>/ 15</span>
-      <button class="pg-btn">›</button>
-      <select class="pg-size">
-        <option value="20">20条/页</option>
-        <option value="50">50条/页</option>
-        <option value="100">100条/页</option>
-      </select>
     </div>
 
     <div class="review-audit-overlay" id="copy-audit-modal" onclick="if(event.target===this)closeCopyAuditModal()">
@@ -485,7 +451,6 @@ function applyCopyReviewFilters() {
     sku: crFilterSkuValue,
     person: personValue,
     personType,
-    status: document.getElementById('cr-status').value,
   };
   copyReviewCurrentListData = getCopyReviewListData().filter(row => {
     const f = copyReviewCurrentFilters;
@@ -500,13 +465,151 @@ function applyCopyReviewFilters() {
       if (personType === 'bu' && getCopyReviewBu(row) !== f.person) return false;
       if (personType === 'bu_lead' && 'Suki' !== f.person) return false;
     }
-    if (f.status && row.review_status !== f.status) return false;
     return true;
   });
-  const order = { '待审核': 1, '已驳回': 2, '已通过': 3 };
-  copyReviewCurrentListData.sort((a, b) => (order[a.review_status] || 99) - (order[b.review_status] || 99));
+  renderCopyReviewTabs();
   renderCopyReviewTable();
   renderCopyReviewAppliedFilters();
+}
+
+function setCopyReviewTab(tab) {
+  copyReviewActiveTab = tab;
+  renderCopyReviewTabs();
+  renderCopyReviewTable();
+}
+
+function renderCopyReviewTabs() {
+  const wrap = document.getElementById('cr-review-tabs');
+  if (!wrap) return;
+  const rows = copyReviewCurrentListData;
+  const counts = {
+    '待审核': rows.filter(r => r.review_status === '待审核').length,
+    '审核历史记录': rows.filter(r => r.review_status === '已通过' || r.review_status === '已驳回').length,
+  };
+  const tabs = [
+    { key: '待审核', label: '当前待审核', cls: 'cr-tab-pending' },
+    { key: '审核历史记录', label: '审核历史记录', cls: 'cr-tab-history' },
+  ];
+  wrap.innerHTML = tabs.map(t => {
+    const active = copyReviewActiveTab === t.key ? ' active' : '';
+    return `<button type="button" class="cr-review-tab ${t.cls}${active}" onclick="setCopyReviewTab('${t.key}')">
+      ${t.label}<span class="cr-tab-badge">${counts[t.key]}</span>
+    </button>`;
+  }).join('');
+}
+
+function getCopyReviewRejectSummary(row) {
+  const history = Array.isArray(row.reject_history) ? row.reject_history : [];
+  const latest = history.length ? history[history.length - 1] : null;
+  const reason = (row.reject_reason || (latest && latest.reason) || '').trim();
+  return reason;
+}
+
+function renderCopyReviewTable() {
+  const thead = document.getElementById('cr-thead');
+  const tbody = document.getElementById('cr-tbody');
+  const total = document.getElementById('cr-pg-total');
+  if (!thead || !tbody) return;
+
+  const isPending = copyReviewActiveTab === '待审核';
+  const isHistory = !isPending;
+  let rows;
+  if (isPending) {
+    rows = copyReviewCurrentListData.filter(r => r.review_status === '待审核');
+  } else {
+    rows = copyReviewCurrentListData.filter(r => r.review_status === '已通过' || r.review_status === '已驳回');
+  }
+  if (isPending) {
+    rows.sort((a, b) => String(a.submit_time || '').localeCompare(String(b.submit_time || '')));
+  } else {
+    rows.sort((a, b) => String(b.review_time || '').localeCompare(String(a.review_time || '')));
+  }
+  if (total) total.textContent = rows.length;
+
+  if (isPending) {
+    thead.innerHTML = `<tr>
+      <th style="width:118px;">需求类型</th>
+      <th style="width:180px;">产品</th>
+      <th style="width:120px;">SKU</th>
+      <th style="width:80px;">品牌</th>
+      <th style="width:60px;">站点</th>
+      <th style="width:64px;">优先级</th>
+      <th style="width:96px;">需求提交人</th>
+      <th style="width:96px;">文案人员</th>
+      <th style="width:108px;">开卖时间</th>
+      <th style="width:152px;">提交审核时间</th>
+      <th style="width:110px;">操作</th>
+    </tr>`;
+  } else {
+    thead.innerHTML = `<tr>
+      <th style="width:118px;">需求类型</th>
+      <th style="width:170px;">产品</th>
+      <th style="width:120px;">SKU</th>
+      <th style="width:80px;">品牌</th>
+      <th style="width:60px;">站点</th>
+      <th style="width:90px;">文案人员</th>
+      <th style="width:150px;">提交审核时间</th>
+      <th style="width:150px;">审核时间</th>
+      <th style="width:84px;">审核状态</th>
+      <th style="width:240px;">结果 / 驳回原因</th>
+      <th style="width:130px;">操作</th>
+    </tr>`;
+  }
+
+  if (!rows.length) {
+    const colspan = 11;
+    const icon = isPending ? '✅' : '🗂️';
+    const text = isPending ? '当前没有待审核文案' : (isHistory ? '暂无历史记录' : '暂无记录');
+    tbody.innerHTML = `<tr><td colspan="${colspan}" class="cr-empty-cell">
+      <div class="cr-empty-icon">${icon}</div>
+      <div>${text}</div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(row => {
+    const typeCls = REQ_TYPE_STYLES[row.type] || 'req-type-listing';
+    const brandCls = row.brand === 'ZIKEE' ? 'brand-zikee' : (row.brand === 'AMOOS' ? 'brand-amoos' : '');
+    const key = encodeURIComponent(row.review_key);
+    const productTd = `<td><span class="cr-product-name" title="${row.name}">${row.name}</span></td>`;
+    const skuTd = `<td><span class="sku-cell">${row.sku}</span></td>`;
+    const brandTd = `<td><span class="brand-tag ${brandCls}">${row.brand}</span></td>`;
+    const siteTd = `<td><span class="cr-site-text">${row.site}</span></td>`;
+    if (row.review_status === '待审核') {
+      return `<tr class="cr-pending-row" onclick="openCopyAuditModal('${key}', 'audit', { auditView: true })">
+        <td><span class="req-type-pill ${typeCls}">${row.type}</span></td>
+        ${productTd}
+        ${skuTd}
+        ${brandTd}
+        ${siteTd}
+        <td>${renderPriorityTag(row)}</td>
+        <td><span class="person-cell">${row.op || '—'}</span></td>
+        <td><span class="person-cell">${row.writer || '—'}</span></td>
+        <td>${renderLaunchDate(row)}</td>
+        <td><span class="submit-time-cell">${row.submit_time || '—'}</span></td>
+        <td onclick="event.stopPropagation()">${renderCopyReviewActions(row)}</td>
+      </tr>`;
+    }
+    const statusCls = row.review_status === '已通过' ? 'status-pass' : 'status-reject';
+    const isReject = row.review_status === '已驳回';
+    const reason = getCopyReviewRejectSummary(row);
+    const resultCell = isReject
+      ? `<span class="cr-reject-reason" title="${(reason || '').replace(/"/g, '&quot;')}">${reason || '驳回原因未填写'}</span>`
+      : `<span class="cr-pass-note">文案通过审核</span>`;
+    return `<tr class="cr-history-row" onclick="openCopyAuditModal('${key}', 'detail', { auditView: true })">
+      <td><span class="req-type-pill ${typeCls}">${row.type}</span></td>
+      ${productTd}
+      ${skuTd}
+      ${brandTd}
+      ${siteTd}
+      <td><span class="person-cell">${row.writer || '—'}</span></td>
+      <td><span class="submit-time-cell">${row.submit_time || '—'}</span></td>
+      <td><span class="submit-time-cell">${row.review_time || '—'}</span></td>
+      <td><span class="status-pill ${statusCls}">${row.review_status}</span></td>
+      <td>${resultCell}</td>
+      <td onclick="event.stopPropagation()">${renderCopyReviewActions(row)}</td>
+    </tr>`;
+  }).join('');
 }
 
 function getCopyReviewBu(row) {
@@ -517,7 +620,7 @@ function getCopyReviewBu(row) {
 }
 
 function resetCopyReviewFilters() {
-  ['cr-req-type', 'cr-site', 'cr-brand', 'cr-subcategory', 'cr-status'].forEach(id => {
+  ['cr-req-type', 'cr-site', 'cr-brand', 'cr-subcategory'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -542,7 +645,7 @@ function getCopyReviewPersonLabel(type) {
 function renderCopyReviewAppliedFilters() {
   const wrap = document.getElementById('cr-applied');
   if (!wrap) return;
-  const labels = { type: '需求类型', site: '站点', brand: '品牌', sub: '子品类', sku: 'SKU', status: '状态' };
+  const labels = { type: '需求类型', site: '站点', brand: '品牌', sub: '子品类', sku: 'SKU' };
   const chips = [];
   Object.keys(labels).forEach(k => {
     if (copyReviewCurrentFilters[k]) {
@@ -579,58 +682,19 @@ function clearCopyReviewFilter(key) {
     applyCopyReviewFilters();
     return;
   }
-  const idMap = { type: 'cr-req-type', site: 'cr-site', brand: 'cr-brand', sub: 'cr-subcategory', status: 'cr-status' };
+  const idMap = { type: 'cr-req-type', site: 'cr-site', brand: 'cr-brand', sub: 'cr-subcategory' };
   const el = document.getElementById(idMap[key]);
   if (el) el.value = '';
   applyCopyReviewFilters();
 }
 
-function renderCopyReviewTable() {
-  const tbody = document.getElementById('cr-tbody');
-  if (!tbody) return;
-  if (!copyReviewCurrentListData.length) {
-    tbody.innerHTML = `<tr><td colspan="17" style="text-align:center;padding:60px 16px;color:var(--text-light);">
-      <div style="font-size:28px;margin-bottom:8px;">📭</div>
-      <div>没有匹配的数据</div>
-    </td></tr>`;
-    document.getElementById('cr-pg-total').textContent = 0;
-    return;
-  }
-  tbody.innerHTML = copyReviewCurrentListData.map(row => {
-    const typeCls = REQ_TYPE_STYLES[row.type] || 'req-type-listing';
-    const brandCls = row.brand === 'ZIKEE' ? 'brand-zikee' : (row.brand === 'AMOOS' ? 'brand-amoos' : '');
-    const statusCls = row.review_status === '已通过' ? 'status-pass' : (row.review_status === '已驳回' ? 'status-reject' : 'status-review');
-    const key = encodeURIComponent(row.review_key);
-    return `<tr onclick="openCopyAuditModal('${key}', 'detail', { auditView: true })">
-      <td><span class="req-type-pill ${typeCls}">${row.type}</span></td>
-      <td>${row.site}</td>
-      <td><span class="brand-tag ${brandCls}">${row.brand}</span></td>
-      <td>${row.sub}</td>
-      <td title="${row.name}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;">${row.name}</td>
-      <td><span class="sku-cell">${row.sku}</span></td>
-      <td>${renderPriorityTag(row)}</td>
-      <td><span style="color:var(--text);font-size:12px;">${row.bu || getCopyReviewBu(row)}</span></td>
-      <td><span class="person-cell">${row.bu_lead || 'Suki'}</span></td>
-      <td><span class="person-cell">${row.op || '—'}</span></td>
-      <td><span class="person-cell">${row.writer || '—'}</span></td>
-      <td>${renderLaunchDate(row)}</td>
-      <td>${row.date || '—'}</td>
-      <td><span class="submit-time-cell">${row.submit_time || '—'}</span></td>
-      <td><span class="submit-time-cell">${row.review_time || '—'}</span></td>
-      <td><span class="status-pill ${statusCls}">${row.review_status}</span></td>
-      <td onclick="event.stopPropagation()">${renderCopyReviewActions(row)}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('cr-pg-total').textContent = copyReviewCurrentListData.length;
-}
-
 function renderCopyReviewActions(row) {
   const key = encodeURIComponent(row.review_key);
   const detail = `<button class="row-action-btn" onclick="event.stopPropagation();openCopyAuditModal('${key}', 'detail', { auditView: true })">详情</button>`;
-  const audit = `<button class="row-action-btn warn" onclick="event.stopPropagation();openCopyAuditModal('${key}', 'audit', { auditView: true })">审核</button>`;
+  const audit = `<button class="row-action-btn primary" onclick="event.stopPropagation();openCopyAuditModal('${key}', 'audit', { auditView: true })">立即审核</button>`;
   const rejectLog = `<button class="row-action-btn danger" onclick="event.stopPropagation();openCopyAuditRecord('${key}')">驳回记录</button>`;
   if (row.review_status === '待审核') return `<div class="row-actions">${audit}</div>`;
-  if (row.review_status === '已驳回') return `<div class="row-actions">${rejectLog}</div>`;
+  if (row.review_status === '已驳回') return `<div class="row-actions">${detail}${rejectLog}</div>`;
   return `<div class="row-actions">${detail}</div>`;
 }
 
