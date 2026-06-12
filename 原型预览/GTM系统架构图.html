@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTM 系统架构图 - 功能模块与子系统</title>
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #e0e7ff;
+    --primary-soft: #eef2ff;
+    --secondary: #8b5cf6;
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --info-light: #dbeafe;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: all 0.2s ease;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    padding: 34px 40px 28px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .header-inner {
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .header .subtitle {
+    font-size: 15px;
+    opacity: 0.92;
+    margin-bottom: 20px;
+  }
+
+  .header .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+
+  .main {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 32px 40px 64px;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: 1.3fr repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .summary-card.primary {
+    background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+    border-color: #c7d2fe;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .summary-value {
+    font-size: 24px;
+    font-weight: 750;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .summary-desc {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .architecture {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .layer {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+  }
+
+  .layer:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .layer-num {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 750;
+    flex-shrink: 0;
+  }
+
+  .layer-title {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .layer-desc {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: right;
+  }
+
+  .layer-1 .layer-num { background: #6366f1; }
+  .layer-2 .layer-num { background: #8b5cf6; }
+  .layer-3 .layer-num { background: #ec4899; }
+  .layer-4 .layer-num { background: #f59e0b; }
+  .layer-5 .layer-num { background: #10b981; }
+
+  .connector {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .positioning {
+    display: grid;
+    grid-template-columns: 1.15fr 2fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+
+  .positioning-main {
+    border-radius: var(--radius-sm);
+    background: var(--primary-soft);
+    border: 1px solid var(--primary-light);
+    padding: 18px;
+  }
+
+  .positioning-main h2 {
+    font-size: 20px;
+    line-height: 1.35;
+    margin-bottom: 10px;
+    color: var(--primary-dark);
+  }
+
+  .positioning-main p {
+    color: var(--text-muted);
+  }
+
+  .goal-grid,
+  .role-grid,
+  .capability-grid,
+  .data-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .goal-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .role-grid {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+  }
+
+  .capability-grid,
+  .data-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .tile {
+    min-height: 62px;
+    padding: 13px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    transition: var(--transition);
+  }
+
+  .tile:hover {
+    transform: translateY(-2px);
+    background: white;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+  }
+
+  .tile-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .tile-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .module-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    min-height: 292px;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .module-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--module-color, var(--primary));
+  }
+
+  .module-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--module-color, var(--primary));
+  }
+
+  .module-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .module-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    background: var(--module-soft, var(--primary-soft));
+    color: var(--module-color, var(--primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    font-weight: 750;
+    flex-shrink: 0;
+  }
+
+  .module-title {
+    font-size: 16px;
+    font-weight: 750;
+    margin-bottom: 3px;
+  }
+
+  .module-subtitle {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .module-value {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 14px;
+    min-height: 42px;
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 550;
+    line-height: 1.25;
+  }
+
+  .chip::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--module-color, var(--primary));
+    opacity: 0.65;
+    flex-shrink: 0;
+  }
+
+  .module-content { --module-color: #6366f1; --module-soft: #eef2ff; }
+  .module-data { --module-color: #0ea5e9; --module-soft: #e0f2fe; }
+  .module-execution { --module-color: #10b981; --module-soft: #d1fae5; }
+  .module-offsite { --module-color: #f59e0b; --module-soft: #fef3c7; }
+  .module-service { --module-color: #ec4899; --module-soft: #fce7f3; }
+  .module-dtc { --module-color: #8b5cf6; --module-soft: #f3e8ff; }
+  .module-insight { --module-color: #14b8a6; --module-soft: #ccfbf1; }
+  .module-tools {
+    --module-color: #f97316;
+    --module-soft: #fff7ed;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+    border-color: #fed7aa;
+  }
+
+  .tool-note {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: #fff7ed;
+    border: 1px dashed #fdba74;
+    color: #9a3412;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .flow-note {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .flow-card {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 14px 16px;
+  }
+
+  .flow-card strong {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text);
+  }
+
+  .flow-card span {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 1180px) {
+    .summary,
+    .positioning,
+    .flow-note {
+      grid-template-columns: 1fr;
+    }
+
+    .module-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .role-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .goal-grid,
+    .capability-grid,
+    .data-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .header {
+      padding: 26px 20px 22px;
+    }
+
+    .main {
+      padding: 24px 20px 48px;
+    }
+
+    .header h1 {
+      font-size: 23px;
+    }
+
+    .layer {
+      padding: 18px;
+    }
+
+    .layer-header {
+      align-items: flex-start;
+    }
+
+    .layer-desc {
+      display: none;
+    }
+
+    .module-grid,
+    .role-grid,
+    .goal-grid,
+    .capability-grid,
+    .data-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <h1>GTM 系统架构图 · 功能模块与子系统</h1>
+    <div class="subtitle">面向亚马逊电商业务的「产品→营销」一体化智能中台，从角色入口到功能模块、能力支撑、数据基础设施的全景视图。</div>
+    <div class="meta">
+      <span class="meta-pill">主干：七大业务中心 + 营销工具站</span>
+      <span class="meta-pill">视角：功能模块 → 子系统</span>
+      <span class="meta-pill">来源：营销系统业务框架图 v0.3</span>
+      <span class="meta-pill">形态：独立 HTML 可视化页面</span>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <section class="summary" aria-label="系统概览指标">
+    <div class="summary-card primary">
+      <div class="summary-label">系统定位</div>
+      <div class="summary-value">产品到营销一体化智能中台</div>
+      <div class="summary-desc">打通选品调研、内容生产、营销执行、数据洞察与复盘迭代。</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">功能模块</div>
+      <div class="summary-value">7 + 1</div>
+      <div class="summary-desc">七大业务中心 + 嵌入式营销工具站。</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">核心用户</div>
+      <div class="summary-value">9 类角色</div>
+      <div class="summary-desc">覆盖产品、运营、投放、站外、客服、数据和管理层。</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">系统目标</div>
+      <div class="summary-value">增长闭环</div>
+      <div class="summary-desc">让营销动作可复用、可衡量、可优化。</div>
+    </div>
+  </section>
+
+  <section class="architecture" aria-label="GTM 系统分层架构">
+    <div class="layer layer-1">
+      <div class="layer-header">
+        <div class="layer-num">1</div>
+        <div>
+          <div class="layer-title">系统定位层</div>
+        </div>
+        <div class="layer-desc">WHY - GTM 系统要达成的业务结果</div>
+      </div>
+      <div class="positioning">
+        <div class="positioning-main">
+          <h2>面向亚马逊电商业务的 GTM 智能中台</h2>
+          <p>围绕从产品上新到营销复盘的全链路，沉淀标准化模块、复用数据资产，并用 AI 提升内容、执行、客服和洞察效率。</p>
+        </div>
+        <div class="goal-grid">
+          <div class="tile">
+            <div class="tile-title">GMV 增长</div>
+            <div class="tile-desc">支撑新品首发、日常运营和活动促销。</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">ROI 提升</div>
+            <div class="tile-desc">让投放、内容、渠道策略可量化复盘。</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">品牌沉淀</div>
+            <div class="tile-desc">沉淀内容资产、私域用户和品牌表达。</div>
+          </div>
+          <div class="tile">
+            <div class="tile-title">效率提升</div>
+            <div class="tile-desc">用 AI 与工具站减少重复性手工操作。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">▼</div>
+
+    <div class="layer layer-2">
+      <div class="layer-header">
+        <div class="layer-num">2</div>
+        <div class="layer-title">入口 / 角色层</div>
+        <div class="layer-desc">WHO - 谁在不同 GTM 场景中使用系统</div>
+      </div>
+      <div class="role-grid">
+        <div class="tile"><div class="tile-title">选品经理</div><div class="tile-desc">选品调研、产品迭代</div></div>
+        <div class="tile"><div class="tile-title">Listing 运营</div><div class="tile-desc">Listing 搭建、日常运营</div></div>
+        <div class="tile"><div class="tile-title">广告投手</div><div class="tile-desc">首发推广、投放优化</div></div>
+        <div class="tile"><div class="tile-title">站外 / 红人运营</div><div class="tile-desc">红人、社媒、GEO 引流</div></div>
+        <div class="tile"><div class="tile-title">文案 / 美工</div><div class="tile-desc">图文视频内容产出</div></div>
+        <div class="tile"><div class="tile-title">客服</div><div class="tile-desc">买家消息、评论响应</div></div>
+        <div class="tile"><div class="tile-title">独立站运营</div><div class="tile-desc">私域、复购、会员运营</div></div>
+        <div class="tile"><div class="tile-title">数据分析师</div><div class="tile-desc">归因、复盘、洞察</div></div>
+        <div class="tile"><div class="tile-title">主管 / 总监</div><div class="tile-desc">决策、资源分配</div></div>
+      </div>
+    </div>
+
+    <div class="connector">▼</div>
+
+    <div class="layer layer-3">
+      <div class="layer-header">
+        <div class="layer-num">3</div>
+        <div class="layer-title">功能模块层：七大业务中心 + 营销工具站</div>
+        <div class="layer-desc">HOW - 系统核心功能模块及子系统</div>
+      </div>
+      <div class="module-grid">
+        <article class="module-card module-content">
+          <div class="module-head">
+            <div class="module-icon">01</div>
+            <div>
+              <div class="module-title">内容生产中心</div>
+              <div class="module-subtitle">AI 驱动的营销内容工厂</div>
+            </div>
+          </div>
+          <p class="module-value">覆盖亚马逊业务全场景文案、图文、视频、GEO 与独立站内容。</p>
+          <div class="chip-list">
+            <span class="chip">Listing 文案</span>
+            <span class="chip">图片文案</span>
+            <span class="chip">视频脚本</span>
+            <span class="chip">包装文案</span>
+            <span class="chip">FAQ 生成</span>
+            <span class="chip">广告文案</span>
+            <span class="chip">站外内容</span>
+            <span class="chip">GEO 内容</span>
+            <span class="chip">独立站内容</span>
+          </div>
+        </article>
+
+        <article class="module-card module-data">
+          <div class="module-head">
+            <div class="module-icon">02</div>
+            <div>
+              <div class="module-title">数据资产中心</div>
+              <div class="module-subtitle">公司级产品与营销数据底座</div>
+            </div>
+          </div>
+          <p class="module-value">打通产品、竞品、关键词、评论、素材与会员数据，消除信息孤岛。</p>
+          <div class="chip-list">
+            <span class="chip">产品库</span>
+            <span class="chip">竞品库</span>
+            <span class="chip">关键词库</span>
+            <span class="chip">评论库</span>
+            <span class="chip">素材库</span>
+            <span class="chip">标签体系</span>
+            <span class="chip">独立站会员库</span>
+          </div>
+        </article>
+
+        <article class="module-card module-execution">
+          <div class="module-head">
+            <div class="module-icon">03</div>
+            <div>
+              <div class="module-title">营销执行中心</div>
+              <div class="module-subtitle">站内营销统一操作台</div>
+            </div>
+          </div>
+          <p class="module-value">把广告、活动、Listing、定价和库存联动到同一个执行与复盘链路中。</p>
+          <div class="chip-list">
+            <span class="chip">广告投放</span>
+            <span class="chip">活动管理</span>
+            <span class="chip">Listing 管理</span>
+            <span class="chip">定价策略</span>
+            <span class="chip">库存联动</span>
+          </div>
+        </article>
+
+        <article class="module-card module-offsite">
+          <div class="module-head">
+            <div class="module-icon">04</div>
+            <div>
+              <div class="module-title">站外引流中心</div>
+              <div class="module-subtitle">站外渠道与 GEO 增量流量</div>
+            </div>
+          </div>
+          <p class="module-value">整合红人、社媒、Google、EDM、Deal 站和归因追踪，为站内与独立站导流。</p>
+          <div class="chip-list">
+            <span class="chip">红人营销</span>
+            <span class="chip">社媒运营</span>
+            <span class="chip">Google 营销</span>
+            <span class="chip">EDM</span>
+            <span class="chip">Deal 站</span>
+            <span class="chip">归因追踪</span>
+            <span class="chip">GEO 运营</span>
+          </div>
+        </article>
+
+        <article class="module-card module-service">
+          <div class="module-head">
+            <div class="module-icon">05</div>
+            <div>
+              <div class="module-title">智能客服中心</div>
+              <div class="module-subtitle">AI 驱动的买家服务体系</div>
+            </div>
+          </div>
+          <p class="module-value">把客服从成本中心转化为评分、复购、口碑和舆情管理的增长触点。</p>
+          <div class="chip-list">
+            <span class="chip">买家消息自动回复</span>
+            <span class="chip">差评监控响应</span>
+            <span class="chip">FAQ 智能问答</span>
+            <span class="chip">多语言翻译</span>
+            <span class="chip">客诉工单</span>
+            <span class="chip">舆情预警</span>
+          </div>
+        </article>
+
+        <article class="module-card module-dtc">
+          <div class="module-head">
+            <div class="module-icon">06</div>
+            <div>
+              <div class="module-title">自建站运营中心</div>
+              <div class="module-subtitle">独立站与私域用户资产</div>
+            </div>
+          </div>
+          <p class="module-value">支撑 Shopify / Shoplazza / 自研站点搭建，沉淀品牌私域与复购运营能力。</p>
+          <div class="chip-list">
+            <span class="chip">独立站搭建</span>
+            <span class="chip">商品 / SKU 同步</span>
+            <span class="chip">会员体系</span>
+            <span class="chip">EDM / 私域营销</span>
+            <span class="chip">Google / Meta 投放</span>
+            <span class="chip">复购运营</span>
+          </div>
+        </article>
+
+        <article class="module-card module-insight">
+          <div class="module-head">
+            <div class="module-icon">07</div>
+            <div>
+              <div class="module-title">洞察决策中心</div>
+              <div class="module-subtitle">从数据资产到业务决策</div>
+            </div>
+          </div>
+          <p class="module-value">覆盖站内、站外、客服、私域全景洞察，缩短试错和策略调整周期。</p>
+          <div class="chip-list">
+            <span class="chip">市场洞察</span>
+            <span class="chip">产品洞察</span>
+            <span class="chip">竞争洞察</span>
+            <span class="chip">用户洞察</span>
+            <span class="chip">营销洞察</span>
+            <span class="chip">客服洞察</span>
+            <span class="chip">私域洞察</span>
+          </div>
+        </article>
+
+        <article class="module-card module-tools">
+          <div class="module-head">
+            <div class="module-icon">08</div>
+            <div>
+              <div class="module-title">营销工具站</div>
+              <div class="module-subtitle">嵌入式高频提效工具集</div>
+            </div>
+          </div>
+          <p class="module-value">解决七大业务中心覆盖不到的细碎、高频、单点提效需求。</p>
+          <div class="chip-list">
+            <span class="chip">图片工具组</span>
+            <span class="chip">文本工具组</span>
+            <span class="chip">业务计算工具组</span>
+            <span class="chip">数据查询工具组</span>
+            <span class="chip">协作工具组</span>
+          </div>
+          <div class="tool-note">定位区别：业务中心是端到端工作流，工具站是按需调用的碎片化提效工具，两者互补。</div>
+        </article>
+      </div>
+
+      <div class="flow-note">
+        <div class="flow-card">
+          <strong>产品 → 内容</strong>
+          <span>产品与竞品数据进入内容生产中心，生成 Listing、图片、视频、包装和 GEO 内容。</span>
+        </div>
+        <div class="flow-card">
+          <strong>内容 → 执行</strong>
+          <span>内容资产进入站内执行、站外引流、客服和独立站场景，形成可跟踪动作。</span>
+        </div>
+        <div class="flow-card">
+          <strong>执行 → 洞察</strong>
+          <span>执行结果、评论、渠道表现和私域数据回流洞察决策中心，反哺下一轮 GTM。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">▼</div>
+
+    <div class="layer layer-4">
+      <div class="layer-header">
+        <div class="layer-num">4</div>
+        <div class="layer-title">能力支撑层</div>
+        <div class="layer-desc">CAPABILITY - 让模块可智能化、可治理、可复用</div>
+      </div>
+      <div class="capability-grid">
+        <div class="tile"><div class="tile-title">AI 大模型</div><div class="tile-desc">生成、审核、总结、问答与策略建议。</div></div>
+        <div class="tile"><div class="tile-title">数据采集引擎</div><div class="tile-desc">同步站内外平台与第三方数据。</div></div>
+        <div class="tile"><div class="tile-title">标签 / 分类体系</div><div class="tile-desc">统一产品、人群、场景、渠道口径。</div></div>
+        <div class="tile"><div class="tile-title">品牌 / 产品知识库</div><div class="tile-desc">沉淀品牌调性、产品资料与历史案例。</div></div>
+        <div class="tile"><div class="tile-title">权限 / 审批流</div><div class="tile-desc">控制预算、折扣、内容合规与跨部门协作。</div></div>
+      </div>
+    </div>
+
+    <div class="connector">▼</div>
+
+    <div class="layer layer-5">
+      <div class="layer-header">
+        <div class="layer-num">5</div>
+        <div class="layer-title">数据源 / 基础设施层</div>
+        <div class="layer-desc">DATA - GTM 系统的数据与系统连接来源</div>
+      </div>
+      <div class="data-grid">
+        <div class="tile"><div class="tile-title">亚马逊 SP-API</div><div class="tile-desc">商品、订单、库存、Listing 与店铺数据。</div></div>
+        <div class="tile"><div class="tile-title">亚马逊 Ads API</div><div class="tile-desc">广告投放、预算、消耗、转化和 ROAS。</div></div>
+        <div class="tile"><div class="tile-title">站外平台 API</div><div class="tile-desc">Google、Meta、TikTok 等渠道表现。</div></div>
+        <div class="tile"><div class="tile-title">第三方数据</div><div class="tile-desc">卖家精灵、Helium 10 等竞品与关键词数据。</div></div>
+        <div class="tile"><div class="tile-title">内部系统</div><div class="tile-desc">ERP、WMS、CRM、成本、供应链和会员数据。</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>
