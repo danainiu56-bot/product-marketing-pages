@@ -963,22 +963,6 @@
   background: #fffbeb;
 }
 
-.tb-sync-btn {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  padding: 0 12px;
-  color: #fff;
-  background: #d97706;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.tb-sync-btn:hover {
-  background: #b45309;
-}
-
 .tb-sync-meta {
   color: #92400e;
   font-size: 11px;

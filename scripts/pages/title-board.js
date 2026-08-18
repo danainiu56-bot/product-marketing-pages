@@ -24,7 +24,6 @@ const titleBoardState = {
   versionDrawerKey: '',
   versionDrawerSelectedVersion: null,
   lastGlobalSyncAt: typeof TITLE_BOARD_LAST_GLOBAL_SYNC !== 'undefined' ? TITLE_BOARD_LAST_GLOBAL_SYNC : '',
-  lastSyncResult: null,
 };
 
 function renderTitleBoardView() {
@@ -481,29 +480,6 @@ function tbApplyListingSyncToVariant(variant, nextSnapshot, syncedAt) {
   return { changed: true, changes };
 }
 
-function tbSimulateDailySync() {
-  const syncedAt = tbAdvanceSyncTimestamp(titleBoardState.lastGlobalSyncAt);
-  let changedCount = 0;
-  const changedSkus = [];
-
-  tbGetAllActiveVariants().forEach(({ variant }) => {
-    const key = tbVariantKey(variant);
-    const preset = typeof TITLE_BOARD_NEXT_SYNC_SNAPSHOTS !== 'undefined'
-      ? TITLE_BOARD_NEXT_SYNC_SNAPSHOTS[key]
-      : null;
-    const nextSnapshot = preset || tbListingSnapshotFromVariant(variant);
-    const result = tbApplyListingSyncToVariant(variant, nextSnapshot, syncedAt);
-    if (result.changed) {
-      changedCount += 1;
-      changedSkus.push(variant.sku);
-    }
-  });
-
-  titleBoardState.lastGlobalSyncAt = syncedAt;
-  titleBoardState.lastSyncResult = { syncedAt, changedCount, changedSkus };
-  renderTitleBoardView();
-}
-
 function tbOpenVersionDrawer(variantKey, versionNumber = null) {
   titleBoardState.versionDrawerKey = variantKey;
   const { variant } = tbFindVariantByKey(variantKey);
@@ -526,13 +502,10 @@ function tbSelectVersionInDrawer(versionNumber) {
 function tbRenderSyncBar(variants) {
   const changedCount = tbCountVariantsWithRecentChanges(variants);
   const lastSync = titleBoardState.lastGlobalSyncAt || TITLE_BOARD_LAST_GLOBAL_SYNC || '—';
-  const resultHint = titleBoardState.lastSyncResult
-    ? ` · 本次 ${titleBoardState.lastSyncResult.changedCount} 个 SKU 有变更`
-    : (changedCount ? ` · ${changedCount} 个 SKU 近期有变更` : '');
+  const resultHint = changedCount ? ` · ${changedCount} 个 SKU 近期有变更` : '';
 
   return `
     <div class="tb-sync-bar">
-      <button type="button" class="tb-sync-btn" onclick="tbSimulateDailySync()">获取最新数据</button>
       <span class="tb-sync-meta">上次全量同步：${tbEscapeHtml(lastSync)}${tbEscapeHtml(resultHint)}</span>
     </div>`;
 }
