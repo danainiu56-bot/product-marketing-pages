@@ -1,0 +1,372 @@
+/* ============================================
+   GEO 模块：占位页 + 品牌总看板
+   ============================================ */
+
+.geo-view {
+  height: 100%;
+  overflow-y: auto;
+  background: #f4f7fb;
+}
+
+.geo-page {
+  min-height: 100%;
+  padding: 24px 28px 48px;
+}
+
+.geo-head {
+  margin-bottom: 16px;
+  padding: 20px 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .04);
+}
+
+.geo-eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.geo-head h1 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.geo-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.geo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  padding: 48px 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  text-align: center;
+}
+
+.geo-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  color: #6366f1;
+  background: #eef2ff;
+}
+
+.geo-empty strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.geo-empty p {
+  max-width: 420px;
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.geo-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.geo-filter-bar label {
+  display: grid;
+  gap: 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.geo-filter-bar select {
+  min-width: 120px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #0f172a;
+  background: #fff;
+  font-size: 13px;
+}
+
+.geo-filter-scope {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.geo-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.geo-tab {
+  flex: 1;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  color: #64748b;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.geo-tab:hover {
+  color: #1d4ed8;
+  background: #f1f5f9;
+}
+
+.geo-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.geo-tab-body {
+  display: grid;
+  gap: 14px;
+}
+
+.geo-module {
+  padding: 16px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.geo-module-head {
+  margin-bottom: 14px;
+}
+
+.geo-module-head h3 {
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.geo-module-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.geo-platform-row,
+.geo-kpi-row,
+.geo-sentiment-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.geo-sentiment-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.geo-platform-card,
+.geo-kpi-card,
+.geo-sentiment-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.geo-platform-card span,
+.geo-kpi-card span,
+.geo-sentiment-card span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.geo-platform-card strong,
+.geo-kpi-card strong,
+.geo-sentiment-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.geo-kpi-card em {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.geo-kpi-card em.up { color: #047857; }
+.geo-kpi-card em.down { color: #b91c1c; }
+
+.geo-insight-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.geo-insight-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.geo-insight-list p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.geo-tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.geo-tag.ok { color: #047857; background: #d1fae5; }
+.geo-tag.warn { color: #b45309; background: #fef3c7; }
+.geo-tag.danger { color: #b91c1c; background: #fee2e2; }
+
+.geo-channel-list,
+.geo-strength-list {
+  display: grid;
+  gap: 10px;
+}
+
+.geo-channel-row,
+.geo-strength-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 48px 64px;
+  gap: 10px;
+  align-items: center;
+  color: #334155;
+  font-size: 13px;
+}
+
+.geo-strength-row {
+  grid-template-columns: 110px minmax(0, 1fr) 40px;
+}
+
+.geo-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.geo-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+}
+
+.geo-channel-row em {
+  color: #64748b;
+  font-style: normal;
+  text-align: right;
+}
+
+.geo-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 180px;
+  padding: 8px 8px 0;
+}
+
+.geo-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 8px;
+}
+
+.geo-trend-bar {
+  width: 36px;
+  min-height: 8px;
+  border-radius: 8px 8px 0 0;
+  background: #93c5fd;
+}
+
+.geo-trend-col span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.geo-table-wrap {
+  overflow-x: auto;
+}
+
+.geo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.geo-table th,
+.geo-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  color: #334155;
+}
+
+.geo-table th {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.geo-sentiment-card.ok { background: #ecfdf5; }
+.geo-sentiment-card.danger { background: #fef2f2; }
+.geo-sentiment-card.muted { background: #f8fafc; }
+
+@media (max-width: 980px) {
+  .geo-platform-row,
+  .geo-kpi-row,
+  .geo-sentiment-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

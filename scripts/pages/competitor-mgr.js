@@ -1,5 +1,5 @@
 /* ============================================
-   竞品管理 - 三视图：管理看板 / 子品类竞品库 / SKU竞品库
+   竞品管理 - 竞品主数据 / 待审核 / SKU 绑定
    ============================================ */
 
 let _competitorMgrRendered = false;
@@ -9,6 +9,7 @@ const competitorMgrState = {
   tab: 'pool',
   subcategory: 'woundPatch',
   category: 'woundPatch',
+  site: 'US',
   categoryKw: '',
   expandedCategories: { woundCare: true },
   sidebarCollapsed: false,
@@ -16,9 +17,15 @@ const competitorMgrState = {
   selectedAsins: [],
   batchLevel: '核心竞品',
   sku: 'PO17X4011',
-  poolFilter: { site: '', tier: '', kw: '' },
+  poolFilter: { site: '', tier: '', status: '', kw: '' },
+  reviewFilter: '待审核',
+  reviewRejectingKey: '',
+  reviewHighlightKey: '',
+  reviewApprovedExpanded: false,
+  addDraft: null,
   viewMode: 'list',
   detailAsin: '',
+  detailSite: '',
   drawerTab: 'overview',
   drawerNavList: [],
   drawerExpanded: {},
@@ -189,7 +196,7 @@ const competitorRecords = [
     link: 'https://www.amazon.com/dp/B0CNEWPILL3',
     image: 'https://picsum.photos/seed/B0CNEWPILL3/120/120',
     tier: '新兴竞品',
-    status: '待复核',
+    status: '待审核',
     price: '$12.99',
     coupon: '15% coupon',
     rating: 4.8,
@@ -323,7 +330,7 @@ const cmAmazonSnapshotByAsin = {
       compliance: ['FSA or HSA eligible'],
     },
     tier: '头部竞品',
-    status: '待复核',
+    status: '待审核',
     price: '$47.99',
     coupon: 'No featured offers available',
     rating: 4.5,
@@ -471,6 +478,24 @@ const cmAmazonSnapshotByAsin = {
 };
 
 competitorRecords.push(...cmBuildAdditionalCompetitors());
+
+competitorRecords.forEach(item => {
+  if (item.status === '待复核') item.status = '待审核';
+  if (!item.createdBy) item.createdBy = item.owner || 'Mason';
+  if (!item.submittedAt && item.status === '待审核') item.submittedAt = '2026-08-10 16:30';
+  if (!Array.isArray(item.auditLog)) {
+    item.auditLog = [{
+      action: item.status === '待审核' ? '提交审核' : '历史数据导入',
+      operator: item.createdBy,
+      time: item.submittedAt || '2026-08-01 10:00',
+      note: item.status,
+    }];
+  }
+  if (!item.dataCompleteness) {
+    const fields = ['title', 'brand', 'image', 'price', 'rating', 'reviews', 'bsrMain', 'bsrSub'];
+    item.dataCompleteness = Math.round(fields.filter(field => item[field] !== undefined && item[field] !== '').length / fields.length * 100);
+  }
+});
 
 competitorRecords.forEach(cmEnsureCompetitorIntel);
 
@@ -827,38 +852,21 @@ function cmEnsureCompetitorIntel(item) {
   item.reviewKeywords.unmetNeeds = cmInjectKeywordSamples(item.brand, item.reviewKeywords.unmetNeeds, 'unmet');
 }
 
-// SKU - 竞品 绑定关系（同一竞品可绑多个 SKU；同一 SKU 可绑多个竞品并区分级别）
+// SKU × 站点 - 竞品绑定关系（同一竞品可服务多个 SKU，同一 SKU 可按站点维护不同竞品集）
 const competitorBindings = [
-  { sku: 'PO17X4011', asin: 'B08AUVON01',  level: '核心竞品', boundBy: 'Mason', boundAt: '2026-01-12' },
-  { sku: 'PO17X4011', asin: 'B09EZYDOSE2', level: '核心竞品', boundBy: 'Mason', boundAt: '2026-01-12' },
-  { sku: 'PO17X4011', asin: 'B0PILL4SUKU', level: '参考竞品', boundBy: 'Mason', boundAt: '2026-01-15' },
-  { sku: 'PO17X4011', asin: 'B0CNEWPILL3', level: '观察竞品', boundBy: 'Ida',   boundAt: '2026-04-08' },
-  { sku: 'PO20A1101', asin: 'B08AUVON01',  level: '核心竞品', boundBy: 'Ida',   boundAt: '2026-02-01' },
-  { sku: 'PO20A1101', asin: 'B0PILL4SUKU', level: '参考竞品', boundBy: 'Ida',   boundAt: '2026-02-01' },
-  { sku: 'PO20A1102', asin: 'B0CNEWPILL3', level: '核心竞品', boundBy: 'Mason', boundAt: '2026-03-15' },
-  { sku: 'PO21C3301', asin: 'B07THERA04',  level: '核心竞品', boundBy: 'Brian', boundAt: '2025-12-20' },
-  { sku: 'PO22F6601', asin: 'B0BGLUCO05',  level: '核心竞品', boundBy: 'Suki',  boundAt: '2026-01-05' },
-];
-
-const competitorAlerts = [
-  { level: 'high', title: '核心竞品 AUVON 价格下降 8%',     detail: '建议运营复核 PO17X4011 当前价格和优惠策略。',  time: '2小时前' },
-  { level: 'high', title: '新兴竞品 MedPocket 30 天 Review +62%', detail: '建议进入核心观察，并分析其广告关键词和主图表达。', time: '今天 09:20' },
-  { level: 'mid',  title: 'Ezy Dose BSR 上升 12 位',         detail: '可能与低价促销有关，建议关注 7 天趋势。',         time: '昨天' },
-  { level: 'low',  title: 'iReliev A+ 页面更新',             detail: '新增使用场景图，可给理疗仪 Listing 优化做参考。', time: '3天前' },
-  { level: 'mid',  title: '历史竞品 B0DELIST06 不可售',      detail: '已超过 14 天，建议归档但保留历史快照。',         time: '5天前' },
-];
-
-const competitorPending = [
-  { id: 'P001', text: '便携药盒池新增 1 条待审核：MedPocket B0CNEWPILL3', tab: 'pool' },
-  { id: 'P002', text: 'PO17X4011 核心竞品价格异常，需复核',              tab: 'sku'  },
-  { id: 'P003', text: '理疗仪子品类覆盖率仅 67%，建议补充',              tab: 'pool' },
-  { id: 'P004', text: 'B0DELIST06 已下架 21 天，建议归档',                tab: 'sku'  },
+  { sku: 'PO17X4011', site: 'US', asin: 'B08AUVON01',  level: '核心竞品', boundBy: 'Mason', boundAt: '2026-01-12' },
+  { sku: 'PO17X4011', site: 'US', asin: 'B09EZYDOSE2', level: '核心竞品', boundBy: 'Mason', boundAt: '2026-01-12' },
+  { sku: 'PO17X4011', site: 'US', asin: 'B0PILL4SUKU', level: '参考竞品', boundBy: 'Mason', boundAt: '2026-01-15' },
+  { sku: 'PO20A1101', site: 'US', asin: 'B08AUVON01',  level: '核心竞品', boundBy: 'Ida',   boundAt: '2026-02-01' },
+  { sku: 'PO20A1101', site: 'US', asin: 'B0PILL4SUKU', level: '参考竞品', boundBy: 'Ida',   boundAt: '2026-02-01' },
+  { sku: 'PO21C3301', site: 'US', asin: 'B07THERA04',  level: '核心竞品', boundBy: 'Brian', boundAt: '2025-12-20' },
+  { sku: 'PO22F6601', site: 'US', asin: 'B0BGLUCO05',  level: '核心竞品', boundBy: 'Suki',  boundAt: '2026-01-05' },
 ];
 
 const cmTabs = [
-  ['pool',      '竞品主数据'],
+  ['pool',      '竞品池数据'],
+  ['review',    '待审核'],
   ['sku',       'SKU竞品绑定'],
-  ['dashboard', '数据概览'],
 ];
 
 // ============================================
@@ -875,7 +883,10 @@ function renderCompetitorMgrView() {
   const detailEl = document.getElementById('cm-detail-container');
   const mode = competitorMgrState.viewMode;
   const item = mode !== 'list'
-    ? competitorRecords.find(r => r.asin === competitorMgrState.detailAsin)
+    ? competitorRecords.find(r =>
+      r.asin === competitorMgrState.detailAsin
+      && (!competitorMgrState.detailSite || r.site === competitorMgrState.detailSite)
+    )
     : null;
   if (mode === 'detail' && item) {
     cmEnsureCompetitorIntel(item);
@@ -906,10 +917,19 @@ function renderCompetitorMgrView() {
 function buildCompetitorMgrHtml() {
   return `
 <div class="cm-app" id="cm-list-container">
+  <header class="cm-module-head">
+    <div>
+      <span>MARKETING COMPETITOR ASSET</span>
+      <h1>营销竞品 ASIN 管理</h1>
+      <p>统一维护竞品池、审核新增 ASIN，并按 SKU × 站点建立营销对标关系。</p>
+    </div>
+    <button class="cm-btn cm-btn-primary" onclick="cmOpenAddDialog()">+ 新增竞品</button>
+  </header>
+  <nav class="cm-tabs" id="cm-tabs"></nav>
   <main class="cm-tab-body">
     <section class="cm-tab-pane" id="cm-pane-pool"></section>
+    <section class="cm-tab-pane" id="cm-pane-review"></section>
     <section class="cm-tab-pane" id="cm-pane-sku"></section>
-    <section class="cm-tab-pane" id="cm-pane-dashboard"></section>
   </main>
 </div>
 
@@ -924,14 +944,31 @@ function buildCompetitorMgrHtml() {
       </div>
       <button onclick="cmCloseAddDialog()">×</button>
     </div>
+    <div class="cm-add-lookup">
+      <label>站点
+        <select id="cm-add-site"><option>US</option><option>UK</option><option>DE</option><option>JP</option></select>
+      </label>
+      <label>ASIN
+        <input id="cm-add-asin" placeholder="B0XXXXXXXX" maxlength="10" oninput="this.value=this.value.toUpperCase()" />
+      </label>
+      <button type="button" class="cm-btn cm-btn-secondary" onclick="cmFetchCompetitorDraft()">获取商品信息</button>
+    </div>
+    <div id="cm-add-fetch-status" class="cm-add-fetch-status">输入站点和 ASIN 后获取 Amazon 商品快照。</div>
     <div class="cm-form-grid">
-      <label>站点<select><option>US</option><option>UK</option><option>DE</option><option>JP</option></select></label>
-      <label>ASIN<input value="B0NEWASIN8" /></label>
-      <label>子品类<select><option>便携药盒</option><option>理疗仪</option><option>血氧仪</option><option>家居收纳</option></select></label>
-      <label>竞品定位<select><option>头部竞品</option><option>直接竞品</option><option>新兴竞品</option><option>标杆竞品</option><option>替代竞品</option></select></label>
-      <label>Amazon 链接<input value="https://www.amazon.com/dp/B0NEWASIN8" /></label>
-      <label>维护人<select><option>Mason</option><option>Ida</option><option>Brian</option><option>Suki</option></select></label>
-      <label class="cm-form-wide">关注原因<textarea>关键词搜索结果首页出现，价格带与本品接近，Review 增长较快。</textarea></label>
+      <label>品牌<input id="cm-add-brand" placeholder="获取后自动填充" /></label>
+      <label>商品名称<input id="cm-add-title" placeholder="获取后自动填充" /></label>
+      <label>子品类
+        <select id="cm-add-subcategory">
+          ${competitorSubcategories.map(item => `<option value="${item.id}">${item.name}</option>`).join('')}
+        </select>
+      </label>
+      <label>竞品定位
+        <select id="cm-add-tier"><option>头部竞品</option><option>直接竞品</option><option>新兴竞品</option><option>标杆竞品</option><option>替代竞品</option></select>
+      </label>
+      <label>目标人群<input id="cm-add-audience" placeholder="选填，例如：长期服药人群" /></label>
+      <label>关注关键词<input id="cm-add-keywords" placeholder="选填，多个词用逗号分隔" /></label>
+      <label class="cm-form-wide">收录原因<textarea id="cm-add-reason" placeholder="必填：说明为什么值得进入竞品池"></textarea></label>
+      <label class="cm-form-wide">备注<textarea id="cm-add-note" placeholder="选填"></textarea></label>
     </div>
     <div class="cm-modal-actions">
       <button class="cm-btn cm-btn-secondary" onclick="cmCloseAddDialog()">取消</button>
@@ -942,85 +979,247 @@ function buildCompetitorMgrHtml() {
 }
 
 function refreshCompetitorMgr() {
+  if (!cmTabs.some(([id]) => id === competitorMgrState.tab)) {
+    competitorMgrState.tab = 'pool';
+  }
   renderCompetitorTabs();
-  renderCompetitorDashboard();
   renderCompetitorPool();
+  renderCompetitorReview();
   renderCompetitorSku();
   document.querySelectorAll('.cm-tab-pane').forEach(el => el.classList.remove('active'));
   const active = document.getElementById(`cm-pane-${competitorMgrState.tab}`);
   if (active) active.classList.add('active');
+  cmAfterCompetitorMgrRender();
+}
+
+function cmGetReviewCounts() {
+  return {
+    pending: competitorRecords.filter(item => item.status === '待审核').length,
+    rejected: competitorRecords.filter(item => item.status === '已驳回').length,
+  };
+}
+
+function cmGetRecentlyApprovedRecords(days = 7) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return competitorRecords.filter(item => {
+    if (item.status !== '有效') return false;
+    const approved = (item.auditLog || []).find(log => log.action === '审核通过');
+    if (!approved?.time) return false;
+    const parsed = new Date(String(approved.time).replace(' ', 'T'));
+    return !Number.isNaN(parsed.getTime()) && parsed.getTime() >= cutoff;
+  });
+}
+
+function cmAfterCompetitorMgrRender() {
+  if (competitorMgrState.tab !== 'review' || !competitorMgrState.reviewHighlightKey) return;
+  const key = competitorMgrState.reviewHighlightKey;
+  requestAnimationFrame(() => {
+    const el = document.getElementById(`cm-review-card-${cmReviewCardDomId(key)}`);
+    if (!el) {
+      competitorMgrState.reviewHighlightKey = '';
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('is-highlight');
+    setTimeout(() => {
+      el.classList.remove('is-highlight');
+      competitorMgrState.reviewHighlightKey = '';
+    }, 2500);
+  });
+}
+
+function cmReviewCardDomId(key) {
+  return String(key).replace(/\|/g, '-');
 }
 
 function renderCompetitorTabs() {
   const nav = document.getElementById('cm-tabs');
   if (!nav) return;
-  nav.innerHTML = cmTabs.map(([id, name]) => `
-    <button class="cm-tab ${competitorMgrState.tab === id ? 'active' : ''}" onclick="cmSwitchTab('${id}')">${name}</button>
-  `).join('');
+  const counts = cmGetReviewCounts();
+  nav.innerHTML = cmTabs.map(([id, name]) => {
+    const badge = id === 'review' && (counts.pending || counts.rejected)
+      ? `<span class="cm-tab-badges">${counts.pending ? `<span class="cm-tab-badge cm-tab-badge-pending" title="待审核">${counts.pending}</span>` : ''}${counts.rejected ? `<span class="cm-tab-badge cm-tab-badge-rejected" title="已驳回">${counts.rejected}</span>` : ''}</span>`
+      : '';
+    return `<button class="cm-tab ${competitorMgrState.tab === id ? 'active' : ''}" onclick="cmSwitchTab('${id}')">${name}${badge}</button>`;
+  }).join('');
 }
 
 // ============================================
-//  Tab 1: 管理看板
+//  待审核：新增 ASIN 入池审核
 // ============================================
-function renderCompetitorDashboard() {
-  const el = document.getElementById('cm-pane-dashboard');
+function renderCompetitorReview() {
+  const el = document.getElementById('cm-pane-review');
   if (!el) return;
-  const totalRecords = competitorRecords.filter(r => r.status !== '下架').length + 132;
-  const pending = competitorRecords.filter(r => r.status === '待复核').length + 3;
-  const stale = competitorSubcategories.reduce((sum, s) => sum + s.stale, 0);
-  const skuBound = new Set(competitorBindings.map(b => b.sku)).size;
-  const kpis = [
-    { label: '竞品主数据',         value: totalRecords, desc: '站点 + ASIN 唯一沉淀' },
-    { label: '已绑定 SKU 数',      value: skuBound,     desc: '至少绑定 1 个核心竞品' },
-    { label: '待审核 / 复核',       value: pending,      desc: '新增、异常集中处理',  warn: true },
-    { label: '待更新',             value: stale,        desc: '超过更新周期未刷新',  warn: stale > 10 },
-    { label: '重点 SKU 覆盖率',     value: '89%',        desc: '建议核心 3-5 个为达标' },
-    { label: '异常预警',           value: competitorAlerts.filter(a => a.level !== 'low').length, desc: '价格 / BSR / Listing 变化' },
-  ];
+  const filter = competitorMgrState.reviewFilter;
+  const counts = cmGetReviewCounts();
+  const records = competitorRecords.filter(item => filter === '全部'
+    ? ['待审核', '已驳回'].includes(item.status)
+    : item.status === filter);
+  const recentlyApproved = cmGetRecentlyApprovedRecords();
 
   el.innerHTML = `
-    <div class="cm-kpi-grid">
-      ${kpis.map(k => `
-        <div class="cm-kpi-card ${k.warn ? 'warn' : ''}">
-          <span>${k.label}</span>
-          <strong>${k.value}</strong>
-          <p>${k.desc}</p>
+    <section class="cm-review-page">
+      <header class="cm-review-head">
+        <div>
+          <h3>新增 ASIN 审核</h3>
+          <p>审核 ASIN 真实性、分类、重复风险和收录价值。审核通过后方可进入竞品池并绑定 SKU。</p>
+          <div class="cm-review-summary">
+            <span class="cm-review-summary-item pending">待审核 ${counts.pending}</span>
+            <span class="cm-review-summary-item rejected">已驳回 ${counts.rejected}</span>
+          </div>
         </div>
-      `).join('')}
-    </div>
-
-    <div class="cm-board-grid">
-      <div class="cm-panel">
-        <div class="cm-panel-head"><h3>各子品类健康度</h3><span>点击进入子品类竞品库</span></div>
-        <div class="cm-health-list">
-          ${competitorSubcategories.map(item => `
-            <button onclick="cmJumpToPool('${item.id}')" class="${competitorMgrState.subcategory === item.id ? 'active' : ''}">
-              <span><strong>${item.name}</strong><em>${item.site} · ${item.owner} · ${item.total} 个竞品</em></span>
-              <i><b style="width:${item.coverage}%"></b></i>
-              <small>${item.coverage}% · 待更新 ${item.stale}</small>
-            </button>
+        <div class="cm-review-filters">
+          ${[
+            ['待审核', counts.pending],
+            ['已驳回', counts.rejected],
+            ['全部', counts.pending + counts.rejected],
+          ].map(([status, count]) => `
+            <button type="button" class="${filter === status ? 'active' : ''}" onclick="cmSetReviewFilter('${status}')">${status}${count ? ` (${count})` : ''}</button>
           `).join('')}
         </div>
+      </header>
+      <div class="cm-review-list">
+        ${records.length ? records.map(cmRenderReviewCard).join('') : `
+          <div class="cm-empty">当前没有${filter === '全部' ? '待审核或已驳回' : filter}的竞品提交。</div>
+        `}
       </div>
+      ${recentlyApproved.length ? `
+        <details class="cm-review-approved-fold" ${competitorMgrState.reviewApprovedExpanded ? 'open' : ''} ontoggle="competitorMgrState.reviewApprovedExpanded = this.open">
+          <summary>最近已通过（7 天内，${recentlyApproved.length} 条）</summary>
+          <div class="cm-review-approved-list">
+            ${recentlyApproved.map(item => `
+              <article class="cm-review-approved-item">
+                <strong>${cmEscapeHtml(item.brand || '—')} · ${cmEscapeHtml(item.asin)}</strong>
+                ${cmStatus(item.status)}
+                <span>${cmEscapeHtml(item.site)} · ${cmEscapeHtml(cmGetSubcategoryName(item.subcategory))}</span>
+                <small>审核人 ${cmEscapeHtml(item.reviewedBy || '—')} · ${cmEscapeHtml(item.reviewedAt || '—')}</small>
+              </article>
+            `).join('')}
+          </div>
+        </details>
+      ` : ''}
+    </section>`;
+}
 
-      <div class="cm-panel">
-        <div class="cm-panel-head"><h3>异常预警</h3><span>近 7 天</span></div>
-        ${renderAlertList(competitorAlerts)}
-      </div>
-
-      <div class="cm-panel">
-        <div class="cm-panel-head"><h3>待处理事项</h3><span>需要负责人确认</span></div>
-        <div class="cm-pending-list">
-          ${competitorPending.map(item => `
-            <button onclick="cmSwitchTab('${item.tab}')">
-              <span class="cm-pending-dot"></span>
-              <span>${item.text}</span>
-              <em>处理 →</em>
-            </button>
-          `).join('')}
+function cmRenderReviewCard(item) {
+  const key = cmCompetitorKey(item.site, item.asin);
+  const rejecting = competitorMgrState.reviewRejectingKey === key;
+  const highlighted = competitorMgrState.reviewHighlightKey === key;
+  const duplicate = competitorRecords.some(other =>
+    other !== item && other.site === item.site && other.asin === item.asin && other.status === '有效'
+  );
+  return `
+    <article class="cm-review-card ${highlighted ? 'is-highlight' : ''}" id="cm-review-card-${cmReviewCardDomId(key)}">
+      <div class="cm-review-card-main">
+        ${cmTableImage(item)}
+        <div class="cm-review-card-info">
+          <div class="cm-review-card-title">
+            <strong>${cmEscapeHtml(item.brand || '待补充')} · ${cmEscapeHtml(item.asin)}</strong>
+            ${cmStatus(item.status)}
+            ${duplicate ? '<span class="cm-review-risk">疑似重复</span>' : ''}
+          </div>
+          <p>${cmEscapeHtml(item.title || '未获取商品标题')}</p>
+          <div class="cm-review-meta">
+            <span>${cmEscapeHtml(item.site)}</span>
+            <span>${cmEscapeHtml(cmGetSubcategoryName(item.subcategory))}</span>
+            <span>${cmEscapeHtml(item.tier)}</span>
+            <span>完整度 ${item.dataCompleteness || 0}%</span>
+          </div>
+          <div class="cm-review-reason"><b>收录原因</b>${cmEscapeHtml(item.reason || '未填写')}</div>
+          <small>提交人 ${cmEscapeHtml(item.createdBy || '—')} · 提交时间 ${cmEscapeHtml(item.submittedAt || '—')}</small>
+          ${item.status === '已驳回' ? `
+            <div class="cm-review-rejected-block">
+              <div class="cm-review-rejected-label">驳回原因</div>
+              <div class="cm-review-rejected-text">${cmEscapeHtml(item.rejectReason || '—')}</div>
+              <small class="cm-review-rejected-meta">审核人 ${cmEscapeHtml(item.reviewedBy || '—')} · ${cmEscapeHtml(item.reviewedAt || '—')}</small>
+            </div>
+          ` : ''}
         </div>
       </div>
-    </div>`;
+      <div class="cm-review-actions">
+        <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmOpenCompetitor('${item.asin}','${item.site}')">查看详情</button>
+        ${item.status === '待审核' ? `
+          <button class="cm-btn cm-btn-primary cm-btn-sm" onclick="cmApproveCompetitor('${item.site}','${item.asin}')">通过</button>
+          <button class="cm-btn cm-btn-danger cm-btn-sm" onclick="cmStartRejectCompetitor('${item.site}','${item.asin}')">驳回</button>
+        ` : `
+          <button class="cm-btn cm-btn-primary cm-btn-sm" onclick="cmResubmitCompetitor('${item.site}','${item.asin}')">修改后重提</button>
+        `}
+      </div>
+      ${rejecting ? `
+        <div class="cm-review-reject-form">
+          <textarea id="cm-review-reason-${cmEscapeAttr(key)}" placeholder="必填：请输入驳回原因"></textarea>
+          <button class="cm-btn cm-btn-danger cm-btn-sm" onclick="cmRejectCompetitor('${item.site}','${item.asin}')">确认驳回</button>
+          <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmCancelRejectCompetitor()">取消</button>
+        </div>
+      ` : ''}
+    </article>`;
+}
+
+function cmSetReviewFilter(status) {
+  competitorMgrState.reviewFilter = status;
+  renderCompetitorReview();
+}
+
+function cmCompetitorKey(site, asin) {
+  return `${site}|${asin}`;
+}
+
+function cmFindCompetitor(site, asin) {
+  return competitorRecords.find(item => item.site === site && item.asin === asin) || null;
+}
+
+function cmApproveCompetitor(site, asin) {
+  const item = cmFindCompetitor(site, asin);
+  if (!item || item.status !== '待审核') return;
+  item.status = '有效';
+  item.reviewedBy = 'Mason';
+  item.reviewedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  item.rejectReason = '';
+  item.auditLog.push({ action: '审核通过', operator: item.reviewedBy, time: item.reviewedAt, note: '进入有效竞品池' });
+  cmToast(`审核通过：${asin} 已进入竞品池`);
+  refreshCompetitorMgr();
+}
+
+function cmStartRejectCompetitor(site, asin) {
+  competitorMgrState.reviewRejectingKey = cmCompetitorKey(site, asin);
+  renderCompetitorReview();
+}
+
+function cmCancelRejectCompetitor() {
+  competitorMgrState.reviewRejectingKey = '';
+  renderCompetitorReview();
+}
+
+function cmRejectCompetitor(site, asin) {
+  const item = cmFindCompetitor(site, asin);
+  const key = cmCompetitorKey(site, asin);
+  const reason = document.getElementById(`cm-review-reason-${key}`)?.value.trim();
+  if (!item || !reason) {
+    cmToast('请填写驳回原因');
+    return;
+  }
+  item.status = '已驳回';
+  item.rejectReason = reason;
+  item.reviewedBy = 'Mason';
+  item.reviewedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  item.auditLog.push({ action: '审核驳回', operator: item.reviewedBy, time: item.reviewedAt, note: reason });
+  competitorMgrState.reviewRejectingKey = '';
+  cmToast(`已驳回：${asin}`);
+  refreshCompetitorMgr();
+}
+
+function cmResubmitCompetitor(site, asin) {
+  const item = cmFindCompetitor(site, asin);
+  if (!item || item.status !== '已驳回') return;
+  item.status = '待审核';
+  item.submittedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  item.auditLog.push({ action: '修改后重提', operator: item.createdBy || 'Mason', time: item.submittedAt, note: '重新进入待审核队列' });
+  item.reviewedBy = '';
+  item.reviewedAt = '';
+  item.rejectReason = '';
+  competitorMgrState.reviewFilter = '待审核';
+  cmToast(`已重新提交：${asin}`);
+  refreshCompetitorMgr();
 }
 
 // ============================================
@@ -1044,14 +1243,15 @@ function renderCompetitorPool() {
   const records = cmGetFilteredPoolRecords();
   const sites = Array.from(new Set(competitorRecords.map(r => r.site)));
   const tiers = ['头部竞品','直接竞品','新兴竞品','标杆竞品','替代竞品'];
-  const statuses = ['有效','待复核','下架','已归档'];
+  const statuses = ['有效','待审核','已驳回','下架','已归档'];
   const totalPages = Math.max(1, Math.ceil(records.length / competitorMgrState.pagination.pageSize));
   if (competitorMgrState.pagination.page > totalPages) competitorMgrState.pagination.page = totalPages;
   const start = (competitorMgrState.pagination.page - 1) * competitorMgrState.pagination.pageSize;
   const pageRecords = records.slice(start, start + competitorMgrState.pagination.pageSize);
   competitorMgrState.selectedAsins = competitorMgrState.selectedAsins.filter(asin => records.some(r => r.asin === asin));
   const canBind = Boolean(currentSku);
-  const allPageSelected = canBind && pageRecords.length > 0 && pageRecords.every(item => competitorMgrState.selectedAsins.includes(item.asin));
+  const bindablePageRecords = pageRecords.filter(cmCanBindRecord);
+  const allPageSelected = canBind && bindablePageRecords.length > 0 && bindablePageRecords.every(item => competitorMgrState.selectedAsins.includes(item.asin));
 
   el.innerHTML = `
     <div class="cm-master-layout ${competitorMgrState.sidebarCollapsed ? 'collapsed' : ''}">
@@ -1062,8 +1262,8 @@ function renderCompetitorPool() {
       <section class="cm-master-main">
         <div class="cm-master-toolbar">
           <div>
-            <h3>${currentTreeName} · 竞品主数据</h3>
-            <p>${resolvedSubcategory ? `映射子品类：${resolvedSubcategoryName}` : '该子品类暂未接入竞品数据'} · 当前结果 ${records.length} 条 · 核心竞品 ${records.filter(r => ['头部竞品','直接竞品','标杆竞品'].includes(r.tier)).length} 个 · 待复核 ${records.filter(r => r.status === '待复核').length} 个</p>
+            <h3>${currentTreeName} · 竞品池数据</h3>
+            <p>${resolvedSubcategory ? `映射子品类：${resolvedSubcategoryName}` : '该子品类暂未接入竞品数据'} · 竞品池 ${records.length} 条（已审核通过） · 核心竞品 ${records.filter(r => ['头部竞品','直接竞品','标杆竞品'].includes(r.tier)).length} 个</p>
           </div>
           <div class="cm-master-actions">
             <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmToast('已模拟：批量导入竞品')">批量导入</button>
@@ -1071,6 +1271,23 @@ function renderCompetitorPool() {
             <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmToast('已模拟：刷新竞品数据')">刷新</button>
             <button class="cm-btn cm-btn-primary cm-btn-sm" onclick="cmOpenAddDialog()">+ 新增竞品</button>
           </div>
+        </div>
+
+        <div class="cm-bind-context">
+          <div>
+            <strong>当前绑定上下文</strong>
+            <span>只有审核通过且站点一致的竞品可被选择。</span>
+          </div>
+          <label>SKU
+            <select onchange="cmSelectPoolSku(this.value)">
+              ${skusInCurrentSubcategory.map(sku => `<option value="${sku.id}" ${sku.id === competitorMgrState.sku ? 'selected' : ''}>${sku.id} · ${sku.name}</option>`).join('')}
+            </select>
+          </label>
+          <label>站点
+            <select onchange="cmSelectBindingSite(this.value)">
+              ${cmGetSkuSites(currentSku).map(site => `<option value="${site}" ${site === competitorMgrState.site ? 'selected' : ''}>${site}</option>`).join('')}
+            </select>
+          </label>
         </div>
 
         <div class="cm-filter-row">
@@ -1088,8 +1305,9 @@ function renderCompetitorPool() {
           </label>
           <label>产品状态
             <select onchange="cmUpdatePoolFilter('status', this.value)">
-              <option value="">全部</option>
-              ${statuses.map(s => `<option value="${s}" ${f.status===s?'selected':''}>${s}</option>`).join('')}
+              <option value="" ${!f.status ? 'selected' : ''}>已审核通过</option>
+              <option value="__all__" ${f.status === '__all__' ? 'selected' : ''}>全部状态</option>
+              ${statuses.filter(s => s !== '有效').map(s => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
           </label>
           <label class="cm-filter-grow">关键词
@@ -1121,14 +1339,16 @@ function renderCompetitorPool() {
                 <th>Review</th>
                 <th>维护人</th>
                 <th>更新时间</th>
+                <th>数据完整度</th>
+                <th>绑定 SKU</th>
                 <th class="cm-col-actions">操作</th>
               </tr>
             </thead>
             <tbody>
-              ${records.length === 0 ? `<tr><td colspan="18" class="cm-empty-row">暂无符合条件的竞品，可调整筛选或新增竞品。</td></tr>` :
+              ${records.length === 0 ? `<tr><td colspan="20" class="cm-empty-row">${(!f.status || f.status === '') ? '暂无已审核通过的竞品，请先在「待审核」Tab 提交或等待审核。' : '暂无符合条件的竞品，可调整筛选或新增竞品。'}</td></tr>` :
                 pageRecords.map(item => `
                   <tr>
-                    <td><input type="checkbox" aria-label="选择竞品 ${item.asin}" onchange="cmTogglePoolSelection('${item.asin}', this.checked)" ${competitorMgrState.selectedAsins.includes(item.asin) ? 'checked' : ''} ${!canBind ? 'disabled' : ''} /></td>
+                    <td><input type="checkbox" aria-label="选择竞品 ${item.asin}" onchange="cmTogglePoolSelection('${item.asin}', this.checked)" ${competitorMgrState.selectedAsins.includes(item.asin) ? 'checked' : ''} ${!canBind || !cmCanBindRecord(item) ? 'disabled' : ''} /></td>
                     <td>${cmTableImage(item)}</td>
                     <td><a href="${item.link}" target="_blank" rel="noopener" class="cm-asin-link">${item.asin}</a></td>
                     <td><strong>${item.brand}</strong></td>
@@ -1145,8 +1365,10 @@ function renderCompetitorPool() {
                     <td>${item.reviews.toLocaleString()}</td>
                     <td>${item.owner}</td>
                     <td>${item.updated}</td>
+                    <td><span class="cm-completeness"><i style="width:${item.dataCompleteness || 0}%"></i></span><small>${item.dataCompleteness || 0}%</small></td>
+                    <td>${cmGetBoundSkuCount(item.site, item.asin)}</td>
                     <td class="cm-col-actions">
-                      ${cmRenderPoolRowActions(item.asin)}
+                      ${cmRenderPoolRowActions(item.asin, item.site)}
                     </td>
                   </tr>
                 `).join('')
@@ -1167,11 +1389,15 @@ function renderCompetitorSku() {
   const el = document.getElementById('cm-pane-sku');
   if (!el) return;
   const sku = getCurrentSku();
+  const skuSites = cmGetSkuSites(sku);
+  if (!skuSites.includes(competitorMgrState.site)) competitorMgrState.site = skuSites[0] || 'US';
   const skuCategories = cmGetLeafTreeCategories()
     .map(category => ({ ...category, subcategory: cmResolveSubcategory(category.id) }))
     .filter(category => category.subcategory && competitorSkus.some(s => s.subcategory === category.subcategory));
   const skusInSub = competitorSkus.filter(s => s.subcategory === competitorMgrState.subcategory);
-  const bindings = competitorBindings.filter(b => b.sku === competitorMgrState.sku);
+  const bindings = competitorBindings.filter(b =>
+    b.sku === competitorMgrState.sku && b.site === competitorMgrState.site
+  );
   const groupedBindings = ['核心竞品', '参考竞品', '观察竞品']
     .map(level => ({ level, items: bindings.filter(b => b.level === level) }))
     .filter(group => group.items.length > 0);
@@ -1214,15 +1440,20 @@ function renderCompetitorSku() {
       <div class="cm-sku-col cm-sku-col-main">
         <div class="cm-sku-col-head cm-sku-main-head">
           <div>
-            <strong>${sku.id} · ${sku.name} · 已绑定结果管理</strong>
-            <em>${sku.owner} 负责 · 上架 ${sku.launchDate} · 绑定竞品 ${bindings.length} 个（核心 ${bindings.filter(b => b.level === '核心竞品').length} / 参考 ${bindings.filter(b => b.level === '参考竞品').length} / 观察 ${bindings.filter(b => b.level === '观察竞品').length}）</em>
+            <strong>${sku.id} · ${sku.name} · SKU × 站点对标管理</strong>
+            <em>${sku.owner} 负责 · ${competitorMgrState.site} 站点 · 绑定竞品 ${bindings.length} 个（核心 ${bindings.filter(b => b.level === '核心竞品').length} / 参考 ${bindings.filter(b => b.level === '参考竞品').length} / 观察 ${bindings.filter(b => b.level === '观察竞品').length}）</em>
           </div>
           <div class="cm-sku-actions">
-            <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmSwitchTab('pool')">去竞品主数据绑定</button>
+            <label>站点
+              <select class="cm-mini-select" onchange="cmSelectBindingSite(this.value)">
+                ${skuSites.map(site => `<option value="${site}" ${competitorMgrState.site === site ? 'selected' : ''}>${site}</option>`).join('')}
+              </select>
+            </label>
+            <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="cmSwitchTab('pool')">去竞品池绑定</button>
           </div>
         </div>
         <div class="cm-sku-col-body cm-sku-col-body-flat">
-          ${bindings.length === 0 ? '<div class="cm-empty">该 SKU 暂未绑定任何竞品。请回到“竞品主数据”选择子品类竞品后绑定到当前 SKU。</div>' : `
+          ${bindings.length === 0 ? '<div class="cm-empty">该 SKU 暂未绑定任何竞品。请回到「竞品池数据」选择子品类竞品后绑定到当前 SKU。</div>' : `
             <div class="cm-binding-groups">
               ${groupedBindings.map(group => `
                 <section class="cm-binding-group">
@@ -1232,6 +1463,7 @@ function renderCompetitorSku() {
                       <thead>
                         <tr>
                           <th>ASIN</th>
+                          <th>站点</th>
                           <th>品牌</th>
                           <th>标题</th>
                           <th>绑定级别</th>
@@ -1247,14 +1479,15 @@ function renderCompetitorSku() {
                       </thead>
                       <tbody>
                         ${group.items.map(b => {
-                          const r = competitorRecords.find(x => x.asin === b.asin) || {};
+                          const r = competitorRecords.find(x => x.site === b.site && x.asin === b.asin) || {};
                           return `
                             <tr>
                               <td><a href="${r.link || '#'}" target="_blank" rel="noopener" class="cm-asin-link">${b.asin}</a></td>
+                              <td>${b.site}</td>
                               <td><strong>${r.brand || '-'}</strong></td>
                               <td class="cm-cell-title" title="${r.title || ''}">${r.title || '-'}</td>
                               <td>
-                                <select class="cm-mini-select cm-bind-level-select" onchange="cmChangeBindLevel('${b.sku}','${b.asin}', this.value)">
+                                <select class="cm-mini-select cm-bind-level-select" onchange="cmChangeBindLevel('${b.sku}','${b.site}','${b.asin}', this.value)">
                                   ${['核心竞品','参考竞品','观察竞品'].map(lv => `<option value="${lv}" ${b.level===lv?'selected':''}>${lv}</option>`).join('')}
                                 </select>
                               </td>
@@ -1266,8 +1499,8 @@ function renderCompetitorSku() {
                               <td>${r.updated || '-'}</td>
                               <td>${b.boundBy} · ${b.boundAt}</td>
                               <td class="cm-col-actions">
-                                <button class="cm-link-btn" onclick="cmOpenCompetitor('${b.asin}')">查看</button>
-                                <button class="cm-link-btn cm-link-btn-warn" onclick="cmUnbindCompetitor('${b.sku}','${b.asin}')">解绑</button>
+                                <button class="cm-link-btn" onclick="cmOpenCompetitor('${b.asin}','${b.site}')">查看</button>
+                                <button class="cm-link-btn cm-link-btn-warn" onclick="cmUnbindCompetitor('${b.sku}','${b.site}','${b.asin}')">解绑</button>
                               </td>
                             </tr>`;
                         }).join('')}
@@ -1684,7 +1917,15 @@ function cmRenderStaticData(item, listing, skuBindings) {
       ${cmIntelCard('包装与适用场景', `${cmIntelList(profile.packageIncludes)}<div class="cm-card-divider"></div>${cmIntelList(profile.targetUsers)}<div class="cm-card-divider"></div>${cmIntelList(profile.usageScenarios)}`)}
       ${cmIntelCard('A+ 页面摘要', cmIntelList(listing.aplus))}
       ${cmIntelCard('合规信息', cmIntelList(profile.compliance))}
-      ${cmIntelCard('SKU 绑定关系', skuBindings.length === 0 ? '<p class="cm-muted">暂无绑定 SKU</p>' : skuBindings.map(b => `<span class="cm-bind-pill">${b.sku} · ${b.level}</span>`).join(''))}
+      ${cmIntelCard('SKU × 站点绑定', skuBindings.length === 0 ? '<p class="cm-muted">暂无绑定 SKU</p>' : skuBindings.map(b => `<span class="cm-bind-pill">${b.sku} · ${b.site} · ${b.level}</span>`).join(''))}
+      ${cmIntelCard('审核与维护记录', cmRenderInfoRows([
+        { label: '当前状态', value: item.status },
+        { label: '申请人', value: item.createdBy || item.owner },
+        { label: '提交时间', value: item.submittedAt || '—' },
+        { label: '审核人', value: item.reviewedBy || '—' },
+        { label: '审核时间', value: item.reviewedAt || '—' },
+        { label: '驳回原因', value: item.rejectReason || '—' },
+      ]) + cmIntelList((item.auditLog || []).map(log => `${log.time} · ${log.operator} · ${log.action}${log.note ? ` · ${log.note}` : ''}`)))}
     </div>
   </section>`;
 }
@@ -1919,7 +2160,7 @@ function cmRenderDrawerActions(item) {
   return `<div class="cm-drawer-actions-bar">
     <div class="cm-drawer-action-left">
       <a href="${item.link || '#'}" target="_blank" rel="noopener" class="cm-drawer-action-link">打开 Amazon</a>
-      <button type="button" onclick="cmOpenCompetitorEditor('${item.asin}')">编辑</button>
+      <button type="button" onclick="cmOpenCompetitorEditor('${item.asin}','${item.site}')">编辑</button>
       <button type="button" onclick="cmCopyAsin('${item.asin}')">复制 ASIN</button>
       <button type="button" onclick="cmToast('加入 SKU 绑定弹窗规划中，已提示设计同学')">加入 SKU</button>
     </div>
@@ -1968,11 +2209,9 @@ function cmRenderKeyMetricsWithSpark(item) {
 function cmDrawerTabs() {
   return [
     ['overview', '概览'],
-    ['static',   '静态档案'],
-    ['dynamic',  '动态监控'],
-    ['analysis', '分析洞察'],
-    ['keywords', '评论分析'],
-    ['seo',      'SEO关键词'],
+    ['static',   '商品与 Listing'],
+    ['dynamic',  '市场表现'],
+    ['analysis', '用户声音与营销结论'],
   ];
 }
 
@@ -2385,7 +2624,7 @@ function cmRenderDrawerTabPanel(item, tabId) {
   const product = item.productAnalysis || {};
   const user = item.userAnalysis || {};
   const summary = item.aiSummary || {};
-  const skuBindings = competitorBindings.filter(b => b.asin === item.asin);
+  const skuBindings = competitorBindings.filter(b => b.asin === item.asin && b.site === item.site);
   switch (tabId) {
     case 'static':   return cmRenderStaticTab(item, listing, skuBindings);
     case 'dynamic':  return cmRenderDynamicTab(item);
@@ -2425,7 +2664,7 @@ function cmRenderDetailBackBar(item) {
     <div class="cm-detail-back-right">
       <div class="cm-detail-back-tools">
         <a class="cm-detail-back-link" href="${item.link || '#'}" target="_blank" rel="noopener">打开 Amazon</a>
-        <button type="button" onclick="cmOpenCompetitorEditor('${item.asin}')">编辑</button>
+        <button type="button" onclick="cmOpenCompetitorEditor('${item.asin}','${item.site}')">编辑</button>
         <button type="button" onclick="cmToast('加入 SKU 绑定弹窗规划中，已提示设计同学')">加入 SKU</button>
       </div>
       <span class="cm-detail-back-divider" aria-hidden="true"></span>
@@ -2486,8 +2725,12 @@ function cmRenderCompetitorDetailPage(item) {
   </section>`;
 }
 
-function cmOpenCompetitor(asin, options) {
-  const item = competitorRecords.find(record => record.asin === asin);
+function cmOpenCompetitor(asin, siteOrOptions, maybeOptions) {
+  const site = typeof siteOrOptions === 'string' ? siteOrOptions : '';
+  const options = typeof siteOrOptions === 'object' ? siteOrOptions : maybeOptions;
+  const item = competitorRecords.find(record =>
+    record.asin === asin && (!site || record.site === site)
+  );
   if (!item) return;
   const keepTab = options && options.keepTab;
   if (!keepTab) competitorMgrState.drawerTab = 'overview';
@@ -2496,6 +2739,7 @@ function cmOpenCompetitor(asin, options) {
   cmDrawerNavSnapshot(asin);
   competitorMgrState.viewMode = 'detail';
   competitorMgrState.detailAsin = asin;
+  competitorMgrState.detailSite = item.site;
   renderCompetitorMgrView();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -2503,16 +2747,19 @@ function cmOpenCompetitor(asin, options) {
 function cmBackToCompetitorList() {
   competitorMgrState.viewMode = 'list';
   competitorMgrState.detailAsin = '';
+  competitorMgrState.detailSite = '';
   renderCompetitorMgrView();
 }
 
 function cmRenderCompetitorEditorPage(item) {
   const asin = item.asin;
-  const statusOptions = ['有效', '待复核', '下架', '已归档'];
+  const statusOptions = ['待审核', '已驳回'].includes(item.status)
+    ? [item.status]
+    : ['有效', '下架', '已归档'];
   const tierOptions = ['头部竞品', '直接竞品', '新兴竞品', '标杆竞品', '替代竞品'];
   const ownerOptions = ['Mason', 'Ida', 'Brian', 'Suki'];
   const siteOptions = ['US', 'UK', 'DE', 'JP'];
-  const skuBindings = competitorBindings.filter(b => b.asin === asin);
+  const skuBindings = competitorBindings.filter(b => b.asin === asin && b.site === item.site);
 
   return `<section class="cm-detail-page cm-detail-page-editor" data-asin="${cmEscapeAttr(asin)}">
     <div class="cm-detail-back-bar">
@@ -2528,7 +2775,7 @@ function cmRenderCompetitorEditorPage(item) {
       </div>
     </div>
 
-    <form id="cm-edit-form" class="cm-edit-form" onsubmit="event.preventDefault(); cmSaveCompetitorEdit('${asin}')">
+    <form id="cm-edit-form" class="cm-edit-form" onsubmit="event.preventDefault(); cmSaveCompetitorEdit('${asin}','${item.site}')">
       <section class="cm-edit-section">
         <h4>基础信息</h4>
         <p>用于识别竞品唯一身份。</p>
@@ -2647,7 +2894,7 @@ function cmRenderCompetitorEditorPage(item) {
 
       <section class="cm-edit-section">
         <h4>SKU 绑定情况</h4>
-        <p>绑定关系只读展示，请在竞品主数据列表或 SKU 绑定页维护。</p>
+        <p>绑定关系只读展示，请在竞品池列表或 SKU 绑定页维护。</p>
         <div class="cm-edit-readonly">
           ${skuBindings.length === 0 ? '<span class="cm-muted">暂无绑定 SKU</span>' :
             skuBindings.map(b => `<span class="cm-bind-pill">${b.sku} · ${b.level}</span>`).join('')}
@@ -2662,11 +2909,14 @@ function cmRenderCompetitorEditorPage(item) {
   </section>`;
 }
 
-function cmOpenCompetitorEditor(asin) {
-  const item = competitorRecords.find(record => record.asin === asin);
+function cmOpenCompetitorEditor(asin, site = '') {
+  const item = competitorRecords.find(record =>
+    record.asin === asin && (!site || record.site === site)
+  );
   if (!item) return;
   competitorMgrState.viewMode = 'editor';
   competitorMgrState.detailAsin = asin;
+  competitorMgrState.detailSite = item.site;
   renderCompetitorMgrView();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -2678,8 +2928,10 @@ function cmCloseDrawer() {
 // ============================================
 //  小工具 / 操作
 // ============================================
-function cmSaveCompetitorEdit(originalAsin) {
-  const item = competitorRecords.find(record => record.asin === originalAsin);
+function cmSaveCompetitorEdit(originalAsin, originalSite) {
+  const item = competitorRecords.find(record =>
+    record.asin === originalAsin && record.site === originalSite
+  );
   const form = document.getElementById('cm-edit-form');
   if (!item || !form) return;
   const data = Object.fromEntries(new FormData(form).entries());
@@ -2692,8 +2944,11 @@ function cmSaveCompetitorEdit(originalAsin) {
     cmToast('Listing Title 不能为空');
     return;
   }
-  if (nextAsin !== originalAsin && competitorRecords.some(record => record.asin === nextAsin)) {
-    cmToast(`ASIN ${nextAsin} 已存在`);
+  const nextSite = data.site || '';
+  if (competitorRecords.some(record =>
+    record !== item && record.asin === nextAsin && record.site === nextSite
+  )) {
+    cmToast(`${nextSite} 站点的 ASIN ${nextAsin} 已存在`);
     return;
   }
 
@@ -2701,7 +2956,7 @@ function cmSaveCompetitorEdit(originalAsin) {
   Object.assign(item, {
     asin: nextAsin,
     brand: (data.brand || '').trim(),
-    site: data.site || '',
+    site: nextSite,
     link: (data.link || '').trim(),
     image: (data.image || '').trim(),
     title: (data['listing.title'] || '').trim(),
@@ -2710,7 +2965,7 @@ function cmSaveCompetitorEdit(originalAsin) {
     price: (data.price || '').trim(),
     coupon: (data.coupon || '').trim(),
     listedDate: (data.listedDate || '').trim(),
-    status: data.status || '待复核',
+    status: data.status || '待审核',
     tier: data.tier || '参考竞品',
     bsrMain: (data.bsrMain || '').trim(),
     bsrSub: (data.bsrSub || '').trim(),
@@ -2751,9 +3006,12 @@ function cmSaveCompetitorEdit(originalAsin) {
     changes: cmSplitTextareaLines(data.changes),
   });
 
-  if (nextAsin !== originalAsin) {
+  if (nextAsin !== originalAsin || nextSite !== originalSite) {
     competitorBindings.forEach(binding => {
-      if (binding.asin === originalAsin) binding.asin = nextAsin;
+      if (binding.asin === originalAsin && binding.site === originalSite) {
+        binding.asin = nextAsin;
+        binding.site = nextSite;
+      }
     });
     competitorMgrState.selectedAsins = competitorMgrState.selectedAsins.map(asin => asin === originalAsin ? nextAsin : asin);
   }
@@ -2823,16 +3081,6 @@ function cmEscapeAttr(value) {
   return cmEscapeHtml(value)
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-function renderAlertList(alerts) {
-  return `<div class="cm-alert-list">${alerts.map(alert => `
-    <div class="cm-alert ${alert.level}">
-      <b>${alert.title}</b>
-      <p>${alert.detail}</p>
-      <span>${alert.time}</span>
-    </div>
-  `).join('')}</div>`;
 }
 
 function cmBuildAdditionalCompetitors() {
@@ -2913,7 +3161,7 @@ function cmBuildAdditionalCompetitors() {
       source: `市场月报 · 2026-${idx % 2 === 0 ? '04' : '05'}`,
       productType: group.type,
       tier: ['头部竞品', '直接竞品', '新兴竞品', '标杆竞品', '替代竞品'][idx % 5],
-      status: idx % 11 === 0 ? '待复核' : '有效',
+      status: idx % 11 === 0 ? '待审核' : '有效',
       price: group.site === 'UK' ? `£${price}` : `$${price}`,
       coupon: idx % 3 === 0 ? '10% coupon' : '无',
       rating: Number(rating),
@@ -2946,17 +3194,6 @@ function cmStatus(text) {
 
 function cmSwitchTab(tab) {
   competitorMgrState.tab = tab;
-  refreshCompetitorMgr();
-}
-
-function cmJumpToPool(subcatId) {
-  competitorMgrState.subcategory = subcatId;
-  const matchedCategory = cmFindTreeCategoryBySubcategory(subcatId);
-  if (matchedCategory) {
-    competitorMgrState.category = matchedCategory;
-    cmEnsureTreeParentExpanded(matchedCategory);
-  }
-  competitorMgrState.tab = 'pool';
   refreshCompetitorMgr();
 }
 
@@ -3124,7 +3361,7 @@ function cmGetTreeCount(childId) {
   }
   const subcategory = cmResolveSubcategory(childId);
   if (!subcategory) return 0;
-  return competitorRecords.filter(r => r.subcategory === subcategory).length;
+  return competitorRecords.filter(r => r.subcategory === subcategory && r.status === '有效').length;
 }
 
 function cmGetTreeCategoryName(childId) {
@@ -3147,7 +3384,11 @@ function cmGetFilteredPoolRecords() {
     if (!resolvedSubcategory || r.subcategory !== resolvedSubcategory) return false;
     if (f.site && r.site !== f.site) return false;
     if (f.tier && r.tier !== f.tier) return false;
-    if (f.status && r.status !== f.status) return false;
+    if (!f.status) {
+      if (r.status !== '有效') return false;
+    } else if (f.status !== '__all__' && r.status !== f.status) {
+      return false;
+    }
     if (f.kw) {
       const kw = f.kw.toLowerCase();
       return r.asin.toLowerCase().includes(kw) || r.brand.toLowerCase().includes(kw) || r.title.toLowerCase().includes(kw);
@@ -3158,13 +3399,32 @@ function cmGetFilteredPoolRecords() {
 
 function cmSelectPoolSku(id) {
   competitorMgrState.sku = id || '';
+  const sku = getCurrentSku();
+  const sites = cmGetSkuSites(sku);
+  if (!sites.includes(competitorMgrState.site)) competitorMgrState.site = sites[0] || 'US';
   competitorMgrState.selectedAsins = [];
   renderCompetitorPool();
 }
 
 function cmGetCurrentPoolBinding(asin) {
   if (!competitorMgrState.sku) return null;
-  return competitorBindings.find(b => b.sku === competitorMgrState.sku && b.asin === asin) || null;
+  return competitorBindings.find(b =>
+    b.sku === competitorMgrState.sku
+    && b.site === competitorMgrState.site
+    && b.asin === asin
+  ) || null;
+}
+
+function cmGetBoundSkuCount(site, asin) {
+  return new Set(competitorBindings
+    .filter(binding => binding.site === site && binding.asin === asin)
+    .map(binding => `${binding.sku}|${binding.site}`)).size;
+}
+
+function cmCanBindRecord(item) {
+  return Boolean(item
+    && item.status === '有效'
+    && item.site === competitorMgrState.site);
 }
 
 function cmRenderBindingStatus(asin) {
@@ -3174,28 +3434,33 @@ function cmRenderBindingStatus(asin) {
   return `<span class="cm-bind-state active">已绑定 · ${binding.level}</span>`;
 }
 
-function cmRenderPoolRowActions(asin) {
+function cmRenderPoolRowActions(asin, site) {
   const binding = cmGetCurrentPoolBinding(asin);
   if (!competitorMgrState.sku) {
     return `
-      <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}')">查看</button>
-      <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}')">编辑</button>
+      <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}','${site}')">查看</button>
+      <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}','${site}')">编辑</button>
     `;
   }
   if (binding) {
     return `
-      <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}')">查看</button>
-      <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}')">编辑</button>
-      <button class="cm-link-btn cm-link-btn-warn" onclick="cmUnbindCompetitor('${binding.sku}','${asin}')">解绑</button>
+      <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}','${site}')">查看</button>
+      <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}','${site}')">编辑</button>
+      <button class="cm-link-btn cm-link-btn-warn" onclick="cmUnbindCompetitor('${binding.sku}','${binding.site}','${asin}')">解绑</button>
     `;
   }
   return `
-    <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}')">查看</button>
-    <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}')">编辑</button>
+    <button class="cm-link-btn" onclick="cmOpenCompetitor('${asin}','${site}')">查看</button>
+    <button class="cm-link-btn" onclick="cmOpenCompetitorEditor('${asin}','${site}')">编辑</button>
   `;
 }
 
 function cmTogglePoolSelection(asin, checked) {
+  const item = competitorRecords.find(record => record.asin === asin);
+  if (checked && !cmCanBindRecord(item)) {
+    cmToast(`只能绑定 ${competitorMgrState.site} 站点且审核通过的竞品`);
+    return;
+  }
   const set = new Set(competitorMgrState.selectedAsins);
   if (checked) {
     set.add(asin);
@@ -3209,7 +3474,10 @@ function cmTogglePoolSelection(asin, checked) {
 function cmTogglePageSelection(checked) {
   const records = cmGetFilteredPoolRecords();
   const { page, pageSize } = competitorMgrState.pagination;
-  const pageAsins = records.slice((page - 1) * pageSize, page * pageSize).map(item => item.asin);
+  const pageAsins = records
+    .slice((page - 1) * pageSize, page * pageSize)
+    .filter(cmCanBindRecord)
+    .map(item => item.asin);
   const set = new Set(competitorMgrState.selectedAsins);
   pageAsins.forEach(asin => {
     if (checked) {
@@ -3237,7 +3505,7 @@ function cmRenderBatchBindBar() {
   return `
     <div class="cm-batch-bind-bar">
       <span>已选择 <strong>${selected.length}</strong> 个竞品</span>
-      <span>绑定到：<strong>${competitorMgrState.sku || '未选择 SKU'}</strong></span>
+      <span>绑定到：<strong>${competitorMgrState.sku || '未选择 SKU'} · ${competitorMgrState.site}</strong></span>
       <label>绑定级别
         <select class="cm-mini-select" onchange="cmSetBatchLevel(this.value)">
           ${['核心竞品','参考竞品','观察竞品'].map(lv => `<option value="${lv}" ${competitorMgrState.batchLevel === lv ? 'selected' : ''}>${lv}</option>`).join('')}
@@ -3250,6 +3518,31 @@ function cmRenderBatchBindBar() {
 
 function cmSelectSku(id) {
   competitorMgrState.sku = id;
+  const sku = getCurrentSku();
+  const sites = cmGetSkuSites(sku);
+  if (!sites.includes(competitorMgrState.site)) competitorMgrState.site = sites[0] || 'US';
+  refreshCompetitorMgr();
+}
+
+function cmGetSkuSites(sku) {
+  if (!sku) return ['US'];
+  const titleSites = typeof TITLE_BOARD_RECORDS === 'undefined'
+    ? []
+    : TITLE_BOARD_RECORDS.flatMap(record =>
+      record.variants
+        .filter(variant => variant.sku === sku.id)
+        .map(variant => variant.site)
+    );
+  const categorySites = competitorRecords
+    .filter(item => item.subcategory === sku.subcategory)
+    .map(item => item.site);
+  return Array.from(new Set([...titleSites, ...categorySites, 'US'])).filter(Boolean);
+}
+
+function cmSelectBindingSite(site) {
+  competitorMgrState.site = site || 'US';
+  competitorMgrState.selectedAsins = [];
+  competitorMgrState.poolFilter.site = competitorMgrState.site;
   refreshCompetitorMgr();
 }
 
@@ -3299,7 +3592,17 @@ function cmRenderPagination(total) {
 
 function cmOpenAddDialog() {
   const modal = document.getElementById('cm-add-modal');
-  if (modal) modal.classList.add('show');
+  if (!modal) return;
+  competitorMgrState.addDraft = null;
+  modal.querySelectorAll('input, textarea').forEach(input => { input.value = ''; });
+  const subcategory = document.getElementById('cm-add-subcategory');
+  if (subcategory && competitorMgrState.subcategory) subcategory.value = competitorMgrState.subcategory;
+  const status = document.getElementById('cm-add-fetch-status');
+  if (status) {
+    status.textContent = '输入站点和 ASIN 后获取 Amazon 商品快照。';
+    status.className = 'cm-add-fetch-status';
+  }
+  modal.classList.add('show');
 }
 
 function cmCloseAddDialog() {
@@ -3307,9 +3610,133 @@ function cmCloseAddDialog() {
   if (modal) modal.classList.remove('show');
 }
 
+function cmMockCompetitorSnapshot(site, asin, subcategory = competitorMgrState.subcategory) {
+  const hash = Array.from(asin).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const brands = ['CareNova', 'HealthMate', 'VitaEase', 'PrimeWell', 'MediChoice'];
+  const brand = brands[hash % brands.length];
+  const currency = site === 'UK' ? '£' : site === 'DE' ? '€' : '$';
+  return {
+    asin,
+    site,
+    brand,
+    title: `${brand} ${cmGetSubcategoryName(subcategory)} Amazon Product with Practical Daily Features and Reliable Design`,
+    image: `https://picsum.photos/seed/${encodeURIComponent(asin)}/120/120`,
+    link: `https://www.amazon.${site === 'UK' ? 'co.uk' : site === 'DE' ? 'de' : 'com'}/dp/${asin}`,
+    price: `${currency}${(8.99 + (hash % 2100) / 100).toFixed(2)}`,
+    coupon: hash % 2 ? '10% coupon' : '无',
+    rating: Number((4 + (hash % 10) / 10).toFixed(1)),
+    reviews: 800 + (hash * 37) % 48000,
+    monthSales: `${1 + hash % 20},000+`,
+    bsrMain: `#${20 + hash % 400} Health & Household`,
+    bsrSub: `#${1 + hash % 40} ${cmGetSubcategoryName(subcategory)}`,
+    bullets: [
+      'Clear primary benefit for everyday shoppers',
+      'Practical design for home and travel use',
+      'Durable materials and easy maintenance',
+      'Simple setup with reliable daily performance',
+      'Complete purchase context and package details',
+    ],
+    listedDate: `202${hash % 6}-0${1 + hash % 9}`,
+  };
+}
+
+function cmFetchCompetitorDraft() {
+  const site = document.getElementById('cm-add-site')?.value || 'US';
+  const asin = (document.getElementById('cm-add-asin')?.value || '').trim().toUpperCase();
+  const subcategory = document.getElementById('cm-add-subcategory')?.value || competitorMgrState.subcategory;
+  const status = document.getElementById('cm-add-fetch-status');
+  if (!/^B0[A-Z0-9]{8}$/.test(asin)) {
+    if (status) {
+      status.textContent = 'ASIN 格式不正确，应为 B0 开头的 10 位字符。';
+      status.className = 'cm-add-fetch-status error';
+    }
+    return;
+  }
+  const existing = cmFindCompetitor(site, asin);
+  if (existing) {
+    if (status) {
+      status.textContent = `该 ASIN 已存在，当前状态：${existing.status}。`;
+      status.className = 'cm-add-fetch-status error';
+    }
+    competitorMgrState.addDraft = null;
+    return;
+  }
+  const snapshot = cmMockCompetitorSnapshot(site, asin, subcategory);
+  competitorMgrState.addDraft = snapshot;
+  const brand = document.getElementById('cm-add-brand');
+  const title = document.getElementById('cm-add-title');
+  if (brand) brand.value = snapshot.brand;
+  if (title) title.value = snapshot.title;
+  if (status) {
+    status.innerHTML = `<strong>获取成功</strong> · ${cmEscapeHtml(snapshot.brand)} · ${cmEscapeHtml(snapshot.price)} · ★ ${snapshot.rating} · Review ${snapshot.reviews.toLocaleString()}`;
+    status.className = 'cm-add-fetch-status success';
+  }
+}
+
 function cmSubmitCompetitor() {
+  const site = document.getElementById('cm-add-site')?.value || 'US';
+  const asin = (document.getElementById('cm-add-asin')?.value || '').trim().toUpperCase();
+  const brand = document.getElementById('cm-add-brand')?.value.trim();
+  const title = document.getElementById('cm-add-title')?.value.trim();
+  const subcategory = document.getElementById('cm-add-subcategory')?.value;
+  const tier = document.getElementById('cm-add-tier')?.value;
+  const reason = document.getElementById('cm-add-reason')?.value.trim();
+  const audience = document.getElementById('cm-add-audience')?.value.trim();
+  const keywords = document.getElementById('cm-add-keywords')?.value.split(/[,，]/).map(item => item.trim()).filter(Boolean) || [];
+  const note = document.getElementById('cm-add-note')?.value.trim();
+  if (!/^B0[A-Z0-9]{8}$/.test(asin)) {
+    cmToast('请输入有效的 ASIN');
+    return;
+  }
+  if (cmFindCompetitor(site, asin)) {
+    cmToast('该站点 ASIN 已存在，不能重复提交');
+    return;
+  }
+  if (!brand || !title) {
+    cmToast('请先获取商品信息，或手动补充品牌和商品名称');
+    return;
+  }
+  if (!subcategory || !tier || !reason) {
+    cmToast('请填写子品类、竞品定位和收录原因');
+    return;
+  }
+
+  const snapshot = competitorMgrState.addDraft
+    && competitorMgrState.addDraft.asin === asin
+    && competitorMgrState.addDraft.site === site
+    ? competitorMgrState.addDraft
+    : cmMockCompetitorSnapshot(site, asin, subcategory);
+  const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const item = {
+    ...snapshot,
+    asin,
+    site,
+    brand,
+    title,
+    subcategory,
+    tier,
+    status: '待审核',
+    reason,
+    targetUsers: audience ? [audience] : [],
+    focusKeywords: keywords,
+    note,
+    owner: 'Mason',
+    createdBy: 'Mason',
+    submittedAt: now,
+    updated: '刚刚',
+    source: 'Amazon ASIN 抓取',
+    changes: ['新增竞品，等待子品类负责人审核'],
+    dataCompleteness: 88,
+    auditLog: [{ action: '提交审核', operator: 'Mason', time: now, note: reason }],
+  };
+  competitorRecords.unshift(item);
+  cmEnsureCompetitorIntel(item);
+  competitorMgrState.reviewFilter = '待审核';
+  competitorMgrState.tab = 'review';
+  competitorMgrState.reviewHighlightKey = cmCompetitorKey(site, asin);
   cmCloseAddDialog();
-  cmToast('已提交审核：新增竞品进入待审核队列');
+  cmToast('已提交审核，审核通过后将进入竞品池');
+  refreshCompetitorMgr();
 }
 
 function cmExportPool() {
@@ -3330,30 +3757,74 @@ function cmBindCompetitor() {
     cmToast('请选择待绑定的竞品');
     return;
   }
+  const item = competitorRecords.find(record => record.asin === candEl.value && record.site === competitorMgrState.site);
+  const error = cmGetBindingError(item, lvlEl.value);
+  if (error) {
+    cmToast(error);
+    return;
+  }
   competitorBindings.push({
     sku: competitorMgrState.sku,
+    site: competitorMgrState.site,
     asin: candEl.value,
     level: lvlEl.value,
     boundBy: 'Mason',
     boundAt: new Date().toISOString().slice(0, 10),
   });
-  cmToast(`已绑定 ${candEl.value} 至 ${competitorMgrState.sku}`);
+  cmInvalidateTitleBoardBindings(competitorMgrState.sku, competitorMgrState.site);
+  cmToast(`已绑定 ${candEl.value} 至 ${competitorMgrState.sku} · ${competitorMgrState.site}`);
   renderCompetitorSku();
 }
 
-function cmUnbindCompetitor(sku, asin) {
-  const idx = competitorBindings.findIndex(b => b.sku === sku && b.asin === asin);
+function cmUnbindCompetitor(sku, site, asin) {
+  const idx = competitorBindings.findIndex(b => b.sku === sku && b.site === site && b.asin === asin);
   if (idx >= 0) competitorBindings.splice(idx, 1);
+  cmInvalidateTitleBoardBindings(sku, site);
   competitorMgrState.selectedAsins = competitorMgrState.selectedAsins.filter(item => item !== asin);
   cmToast(`已解绑 ${asin}`);
   refreshCompetitorMgr();
 }
 
-function cmChangeBindLevel(sku, asin, level) {
-  const b = competitorBindings.find(x => x.sku === sku && x.asin === asin);
+function cmChangeBindLevel(sku, site, asin, level) {
+  const b = competitorBindings.find(x => x.sku === sku && x.site === site && x.asin === asin);
+  const item = competitorRecords.find(record => record.site === site && record.asin === asin);
+  const error = cmGetBindingError(item, level, b);
+  if (error) {
+    cmToast(error);
+    renderCompetitorSku();
+    return;
+  }
   if (b) b.level = level;
+  cmInvalidateTitleBoardBindings(sku, site);
   cmToast(`绑定级别已更新为 ${level}`);
   refreshCompetitorMgr();
+}
+
+function cmGetBindingError(item, level, existingBinding = null) {
+  if (!item || item.status !== '有效') return '只能绑定审核通过且状态有效的竞品';
+  if (item.site !== competitorMgrState.site) return `竞品站点为 ${item.site}，不能绑定到 ${competitorMgrState.site} 站点`;
+  const scoped = competitorBindings.filter(binding =>
+    binding.sku === competitorMgrState.sku
+    && binding.site === competitorMgrState.site
+    && binding !== existingBinding
+  );
+  if (level === '核心竞品' && scoped.filter(binding => binding.level === '核心竞品').length >= 5) {
+    return '每个 SKU × 站点最多维护 5 个核心竞品';
+  }
+  if (level !== '核心竞品' && scoped.filter(binding => binding.level !== '核心竞品').length >= 10) {
+    return '参考竞品和观察竞品合计最多维护 10 个';
+  }
+  return '';
+}
+
+function cmInvalidateTitleBoardBindings(sku, site) {
+  if (typeof titleBoardState === 'undefined' || !titleBoardState.competitorAsinsByVariant) return;
+  const prefix = `${site}|${sku}|`;
+  Object.keys(titleBoardState.competitorAsinsByVariant)
+    .filter(key => key.startsWith(prefix))
+    .forEach(key => {
+      titleBoardState.competitorAsinsByVariant[key] = [];
+    });
 }
 
 function cmToast(text) {
@@ -4353,20 +4824,32 @@ function cmBindFromPool(asin) {
   }
   const levelEl = document.getElementById(`cm-pool-level-${asin}`);
   const level = levelEl ? levelEl.value : '参考竞品';
-  const exists = competitorBindings.find(b => b.sku === competitorMgrState.sku && b.asin === asin);
+  const item = competitorRecords.find(record => record.site === competitorMgrState.site && record.asin === asin);
+  const exists = competitorBindings.find(b =>
+    b.sku === competitorMgrState.sku
+    && b.site === competitorMgrState.site
+    && b.asin === asin
+  );
+  const error = cmGetBindingError(item, level, exists);
+  if (error) {
+    cmToast(error);
+    return;
+  }
   if (exists) {
     exists.level = level;
   } else {
     competitorBindings.push({
       sku: competitorMgrState.sku,
+      site: competitorMgrState.site,
       asin,
       level,
       boundBy: 'Mason',
       boundAt: new Date().toISOString().slice(0, 10),
     });
   }
+  cmInvalidateTitleBoardBindings(competitorMgrState.sku, competitorMgrState.site);
   competitorMgrState.selectedAsins = competitorMgrState.selectedAsins.filter(item => item !== asin);
-  cmToast(`已将 ${asin} 绑定到 ${competitorMgrState.sku}`);
+  cmToast(`已将 ${asin} 绑定到 ${competitorMgrState.sku} · ${competitorMgrState.site}`);
   renderCompetitorPool();
 }
 
@@ -4381,21 +4864,32 @@ function cmBatchBindFromPool() {
     return;
   }
   const today = new Date().toISOString().slice(0, 10);
+  let boundCount = 0;
   selected.forEach(asin => {
-    const existing = competitorBindings.find(b => b.sku === competitorMgrState.sku && b.asin === asin);
+    const item = competitorRecords.find(record => record.site === competitorMgrState.site && record.asin === asin);
+    const existing = competitorBindings.find(b =>
+      b.sku === competitorMgrState.sku
+      && b.site === competitorMgrState.site
+      && b.asin === asin
+    );
+    const error = cmGetBindingError(item, competitorMgrState.batchLevel, existing);
+    if (error) return;
     if (existing) {
       existing.level = competitorMgrState.batchLevel;
     } else {
       competitorBindings.push({
         sku: competitorMgrState.sku,
+        site: competitorMgrState.site,
         asin,
         level: competitorMgrState.batchLevel,
         boundBy: 'Mason',
         boundAt: today,
       });
     }
+    boundCount += 1;
   });
+  cmInvalidateTitleBoardBindings(competitorMgrState.sku, competitorMgrState.site);
   competitorMgrState.selectedAsins = [];
-  cmToast(`已将 ${selected.length} 个竞品绑定到 ${competitorMgrState.sku}`);
+  cmToast(`已将 ${boundCount} 个竞品绑定到 ${competitorMgrState.sku} · ${competitorMgrState.site}`);
   renderCompetitorPool();
 }

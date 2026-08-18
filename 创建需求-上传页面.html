@@ -25,9 +25,11 @@
 <link rel="stylesheet" href="styles/pages/copy-list.css?v=20260612-review-tabs7">
 <link rel="stylesheet" href="styles/pages/workbench.css?v=20260609-no-sales-hint">
 <link rel="stylesheet" href="styles/pages/ops-workbench.css?v=20260601-1501">
+<link rel="stylesheet" href="styles/pages/geo.css?v=20260817-1710">
 <link rel="stylesheet" href="styles/pages/design-demand.css?v=20260609-design-sync">
-<link rel="stylesheet" href="styles/pages/competitor-mgr.css?v=20260604-1013">
-<link rel="stylesheet" href="styles/pages/ai-chat.css?v=20260609-idx-width">
+<link rel="stylesheet" href="styles/pages/competitor-mgr.css?v=20260812-1555">
+<link rel="stylesheet" href="styles/pages/title-board.css?v=20260818-0948">
+<link rel="stylesheet" href="styles/pages/ai-chat.css?v=20260612-note-required">
 
 <!-- ===== Mock 数据层（必须在主 script 之前加载，因为有顶层立即引用）===== -->
 <!-- 接 API 时只改这些文件 -->
@@ -42,15 +44,16 @@
 <script src="scripts/data/bg-knowledge.js?v=20260509-1710"></script>
 <script src="scripts/data/score-rules.js?v=20260509-1710"></script>
 <script src="scripts/data/input-templates.js?v=20260608-opt-dual"></script>
-<script src="scripts/data/workbench-mock.js?v=20260608-health-status"></script>
+<script src="scripts/data/workbench-mock.js?v=20260612-health-summary"></script>
 <script src="scripts/data/design-demand-mock.js?v=20260609-design-sync"></script>
 <script src="scripts/data/insight-report-md.js?v=20260604-1013"></script>
+<script src="scripts/data/title-board-mock.js?v=20260805-1740"></script>
 
 <!-- ===== Core 基础设施（在数据之后、主 inline 脚本之前加载）===== -->
 <script src="scripts/core/icons.js?v=20260509-1710"></script>
 <script src="scripts/core/utils.js?v=20260509-1710"></script>
 <script src="scripts/core/toast.js?v=20260509-1710"></script>
-<script src="scripts/core/router.js?v=20260609-design-sync"></script>
+<script src="scripts/core/router.js?v=20260817-geo"></script>
 
 <!-- ===== SheetJS（Excel 生成库，在页面脚本之前加载） ===== -->
 <script src="scripts/vendor/xlsx.full.min.js"></script>
@@ -59,14 +62,16 @@
 <script src="scripts/pages/topbar.js?v=20260509-1710"></script>
 <script src="scripts/pages/wizard.js?v=20260605-design-dept"></script>
 <script src="scripts/pages/result.js?v=20260609-design-sync"></script>
-<script src="scripts/pages/demand-list.js?v=20260609-design-sync"></script>
-<script src="scripts/pages/competitor-mgr.js?v=20260605-ir-head"></script>
+<script src="scripts/pages/demand-list.js?v=20260817-geo"></script>
+<script src="scripts/pages/competitor-mgr.js?v=20260812-1555"></script>
+<script src="scripts/pages/title-board.js?v=20260818-1048"></script>
 <script src="scripts/pages/ops-workbench.js?v=20260601-1501"></script>
+<script src="scripts/pages/geo.js?v=20260817-1710"></script>
 <script src="scripts/pages/copy-list.js?v=20260512-1655"></script>
 <script src="scripts/pages/review-list.js?v=20260509-1710"></script>
 <script src="scripts/pages/copy-review-list.js?v=20260612-review-tabs5"></script>
 <script src="scripts/pages/design-demand-list.js?v=20260609-design-sync"></script>
-<script src="scripts/pages/ai-chat.js?v=20260609-richtext-headline"></script>
+<script src="scripts/pages/ai-chat.js?v=20260612-note-required"></script>
 <script src="scripts/pages/workbench-trend.js?v=20260604-trend-line"></script>
 
 <!-- ===== 入口（DOMContentLoaded 初始化）===== -->
@@ -397,8 +402,10 @@
 
     <section id="competitor-mgr-view" class="competitor-mgr-view" style="display:none;"></section>
     <section id="product-mgr-view" class="product-mgr-view" style="display:none;"></section>
+    <section id="title-board-view" class="title-board-view" style="display:none;"></section>
     <section id="insight-report-view" class="insight-report-view" style="display:none;"></section>
     <section id="ops-workbench-view" class="ops-workbench-view" style="display:none;"></section>
+    <section id="geo-view" class="geo-view" style="display:none;"></section>
 
     <!-- ===== 工作台 ===== -->
     <section id="workbench-view" class="workbench-view" style="display:none;">

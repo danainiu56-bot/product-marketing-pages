@@ -98,9 +98,15 @@ function restoreSavedView() {
   } else if (view === 'competitor-mgr') {
     goToList();
     showCompetitorMgrView();
+  } else if (view === 'title-board') {
+    goToList();
+    showTitleBoardView();
   } else if (view === 'ops-workbench') {
     goToList();
     showOpsWorkbenchView();
+  } else if (view && view.startsWith('geo:')) {
+    goToList();
+    showGeoView(view.slice(4));
   } else if (view === 'ai-chat') {
     goToList();
     showDemandMgrView();
@@ -180,6 +186,10 @@ function showWorkbenchView() {
   if (ops) ops.style.display = 'none';
   const insight = document.getElementById('insight-report-view');
   if (insight) insight.style.display = 'none';
+  const titleBoard = document.getElementById('title-board-view');
+  if (titleBoard) titleBoard.style.display = 'none';
+  const geo = document.getElementById('geo-view');
+  if (geo) geo.style.display = 'none';
   const wb = document.getElementById('workbench-view');
   if (wb) {
     wb.style.display = 'flex';
@@ -219,6 +229,10 @@ function showCopywritingView() {
   if (ops) ops.style.display = 'none';
   const insight = document.getElementById('insight-report-view');
   if (insight) insight.style.display = 'none';
+  const titleBoard = document.getElementById('title-board-view');
+  if (titleBoard) titleBoard.style.display = 'none';
+  const geo = document.getElementById('geo-view');
+  if (geo) geo.style.display = 'none';
   document.querySelectorAll('.list-nav-link, .list-nav-single').forEach(el => el.classList.remove('active'));
   const activeBtn = document.querySelector(`.list-nav-link[onclick*="'copywriting'"]`);
   if (activeBtn) activeBtn.classList.add('active');
@@ -252,6 +266,10 @@ function showDemandMgrView() {
   if (opsD) opsD.style.display = 'none';
   const insightD = document.getElementById('insight-report-view');
   if (insightD) insightD.style.display = 'none';
+  const titleBoardD = document.getElementById('title-board-view');
+  if (titleBoardD) titleBoardD.style.display = 'none';
+  const geoD = document.getElementById('geo-view');
+  if (geoD) geoD.style.display = 'none';
   const dm = document.getElementById('demand-mgr-view');
   if (dm) {
     // 用 flex 匹配 CSS 中 .demand-mgr-view 的 display:flex（避免覆盖布局）
@@ -308,6 +326,10 @@ function showReviewMgrView() {
   if (opsR) opsR.style.display = 'none';
   const insightR = document.getElementById('insight-report-view');
   if (insightR) insightR.style.display = 'none';
+  const titleBoardR = document.getElementById('title-board-view');
+  if (titleBoardR) titleBoardR.style.display = 'none';
+  const geoR = document.getElementById('geo-view');
+  if (geoR) geoR.style.display = 'none';
   const rv = document.getElementById('review-mgr-view');
   if (rv) {
     rv.style.display = 'flex';
@@ -349,6 +371,10 @@ function showCopyReviewView() {
   if (insightCR) insightCR.style.display = 'none';
   const ddCR = document.getElementById('design-demand-view');
   if (ddCR) ddCR.style.display = 'none';
+  const titleBoardCR = document.getElementById('title-board-view');
+  if (titleBoardCR) titleBoardCR.style.display = 'none';
+  const geoCR = document.getElementById('geo-view');
+  if (geoCR) geoCR.style.display = 'none';
   const cr = document.getElementById('copy-review-view');
   if (cr) {
     cr.style.display = 'flex';
@@ -390,6 +416,10 @@ function showDesignDemandView() {
   if (opsCR) opsCR.style.display = 'none';
   const insightCR = document.getElementById('insight-report-view');
   if (insightCR) insightCR.style.display = 'none';
+  const titleBoardDD = document.getElementById('title-board-view');
+  if (titleBoardDD) titleBoardDD.style.display = 'none';
+  const geoDD = document.getElementById('geo-view');
+  if (geoDD) geoDD.style.display = 'none';
   const dd = document.getElementById('design-demand-view');
   if (dd) {
     dd.style.display = 'flex';
@@ -415,7 +445,7 @@ function showCompetitorMgrView() {
     main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
       .forEach(el => { el.style.display = 'none'; });
   }
-  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','product-mgr-view','insight-report-view','ops-workbench-view'].forEach(id => {
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','product-mgr-view','title-board-view','insight-report-view','ops-workbench-view','geo-view'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -439,7 +469,7 @@ function showProductMgrView() {
     main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
       .forEach(el => { el.style.display = 'none'; });
   }
-  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','insight-report-view','ops-workbench-view'].forEach(id => {
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','title-board-view','insight-report-view','ops-workbench-view','geo-view'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -455,6 +485,30 @@ function showProductMgrView() {
   if (typeof saveView === 'function') saveView('product-mgr');
 }
 
+// ----- showTitleBoardView -----
+function showTitleBoardView() {
+  setListActiveTabTitle('Title 看板');
+  const main = document.querySelector('#list-page .list-main');
+  if (main) {
+    main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
+      .forEach(el => { el.style.display = 'none'; });
+  }
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','insight-report-view','ops-workbench-view','geo-view'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const view = document.getElementById('title-board-view');
+  if (view) {
+    view.style.display = 'block';
+    if (typeof renderTitleBoardView === 'function') renderTitleBoardView();
+    view.scrollTop = 0;
+  }
+  document.querySelectorAll('.list-nav-link, .list-nav-single').forEach(el => el.classList.remove('active'));
+  const activeBtn = document.querySelector(`.list-nav-link[onclick*="'title-board'"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+  if (typeof saveView === 'function') saveView('title-board');
+}
+
 // ----- showInsightReportView -----
 function showInsightReportView() {
   setListActiveTabTitle('洞察报告');
@@ -463,7 +517,7 @@ function showInsightReportView() {
     main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
       .forEach(el => { el.style.display = 'none'; });
   }
-  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','ops-workbench-view'].forEach(id => {
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','title-board-view','ops-workbench-view','geo-view'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -487,7 +541,7 @@ function showOpsWorkbenchView() {
     main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
       .forEach(el => { el.style.display = 'none'; });
   }
-  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','insight-report-view'].forEach(id => {
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','title-board-view','insight-report-view','geo-view'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -501,6 +555,33 @@ function showOpsWorkbenchView() {
   const activeBtn = document.querySelector(`.list-nav-link[onclick*="'ops-new-product-ppt'"]`);
   if (activeBtn) activeBtn.classList.add('active');
   if (typeof saveView === 'function') saveView('ops-workbench');
+}
+
+// ----- showGeoView -----
+function showGeoView(pageId) {
+  const page = (typeof GEO_PAGES !== 'undefined' && GEO_PAGES[pageId])
+    ? GEO_PAGES[pageId]
+    : { title: 'GEO' };
+  setListActiveTabTitle(page.title);
+  const main = document.querySelector('#list-page .list-main');
+  if (main) {
+    main.querySelectorAll(':scope > .list-tab-bar, :scope > .list-filter-bar, :scope > .list-table-wrap, :scope > .list-pagination')
+      .forEach(el => { el.style.display = 'none'; });
+  }
+  ['workbench-view','demand-mgr-view','review-mgr-view','copy-review-view','design-demand-view','competitor-mgr-view','product-mgr-view','title-board-view','insight-report-view','ops-workbench-view'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const v = document.getElementById('geo-view');
+  if (v) {
+    v.style.display = 'block';
+    if (typeof renderGeoView === 'function') renderGeoView(pageId);
+    v.scrollTop = 0;
+  }
+  document.querySelectorAll('.list-nav-link, .list-nav-single').forEach(el => el.classList.remove('active'));
+  const activeBtn = document.querySelector(`.list-nav-link[onclick*="'${pageId}'"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+  if (typeof saveView === 'function') saveView(`geo:${pageId}`);
 }
 
 // ============================================

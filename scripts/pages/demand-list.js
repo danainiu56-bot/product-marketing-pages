@@ -24,10 +24,18 @@ const SIDEBAR_MENU = [
   { id: 'content', icon: 'content', name: '内容管理', children: [
     { id: 'competitor-mgr', name: '竞品管理' },
     { id: 'product-mgr',    name: '产品管理' },
+    { id: 'title-board',    name: 'Title 看板' },
     { id: 'insight-report', name: '洞察报告' },
   ]},
   { id: 'ops', icon: 'workbench', name: '运营工作台', children: [
     { id: 'ops-new-product-ppt', name: '新品卖点 PPT' },
+  ]},
+  { id: 'geo', icon: 'insight', name: 'GEO', children: [
+    { id: 'geo-brand-board', name: '品牌总看板' },
+    { id: 'geo-alexa-board', name: 'Alexa看板' },
+    { id: 'geo-sentiment', name: '舆情监控' },
+    { id: 'geo-ad-spa', name: '广告SPA' },
+    { id: 'geo-qa', name: 'QA管理' },
   ]},
   { id: 'system', icon: 'system', name: '系统管理', single: true },
 ];
@@ -269,12 +277,20 @@ function onMenuClick(id) {
     showProductMgrView();
     return;
   }
+  if (id === 'title-board') {
+    showTitleBoardView();
+    return;
+  }
   if (id === 'insight-report') {
     showInsightReportView();
     return;
   }
   if (id === 'ops-new-product-ppt') {
     showOpsWorkbenchView();
+    return;
+  }
+  if (id.startsWith('geo-')) {
+    showGeoView(id);
     return;
   }
   showToast(`「${id}」 模块开发中...`, 'warning');
