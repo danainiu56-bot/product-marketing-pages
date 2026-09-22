@@ -20,6 +20,8 @@ const RESULT_MODULES = [
   { id: 'mod-pain',      iconKey: 'aplus',   iconBg: 'orange', title: '用户痛点',  desc: '产品可解决的用户痛点' },
   { id: 'mod-faq-extra', iconKey: 'faq',     iconBg: 'purple', title: '补充信息',  desc: 'GEO 助手查询与 Rufus 交互补充' },
   { id: 'mod-stp',       iconKey: 'compete', iconBg: 'purple', title: '产品 STP', desc: '细分 / 目标 / 定位' },
+  { id: 'mod-package-faces', iconKey: 'package', iconBg: 'pink', title: '包装六面文案', desc: '正面 / 背面 / 侧翼 / 顶底面印刷文案' },
+  { id: 'mod-manual-sections', iconKey: 'manual', iconBg: 'indigo', title: '说明书章节', desc: '安全须知 / 使用步骤 / 参数 / 保修' },
 ];
 
 const MOCK_DATA = {
@@ -574,6 +576,40 @@ const MOCK_DATA = {
       { label: '是否避光',   values: ['是',                   '是',                    '是',                    '是'] },
       { label: '特色功能',   values: ['防潮外壳',             '磁吸双开',              '防潮外壳',              '防潮外壳'] },
     ],
+  },
+  packageCopy: {
+    faces: [
+      { face: '正面主视觉', text: '7-Day Weekly Pill Organizer', citations: [{ ref: 'F1', fileId: 'f-spec', page: 1, quote: 'Product Name: 7-Day Weekly Pill Organizer' }], pending: false },
+      { face: '正面 Slogan', text: 'Plan Your Week. Travel with Confidence.', citations: [{ ref: 'C1', fileId: 'c1', page: 2, quote: 'Seven labeled compartments for weekly medication planning.' }], pending: false },
+      { face: '背面卖点', text: 'Large compartments · Snap-tight lids · BPA-free PP body · Clear day labels Mon–Sun', citations: [{ ref: 'F2', fileId: 'f-bom', page: 1, quote: 'Body: PP, BPA-free' }, { ref: 'C1', fileId: 'c1', page: 2, quote: 'Secure snap lids help prevent spills during travel.' }], pending: false },
+      { face: '背面使用简述', text: 'Fill each compartment at the start of the week. Press lids until you hear a click.', citations: [{ ref: 'C2', fileId: 'c2', page: 1, quote: 'Fill each compartment at the start of the week.' }], pending: false },
+      { face: '左侧参数 / 认证', text: 'Model PO17X4011 · Net 168g · CE / FCC certified', citations: [{ ref: 'F3', fileId: 'f-ce', page: 1, quote: 'CE / FCC certified' }], pending: false },
+      { face: '右侧警示 / 制造商', text: 'Keep away from children. Not for medical diagnosis.', citations: [{ ref: 'F4', fileId: 'f-warn', page: 1, quote: 'Warning: Keep away from children...' }], pending: true },
+      { face: '顶面', text: 'AUVON · PO17X4011 · Made for daily medication planning', citations: [], pending: false },
+      { face: '底面', text: 'Barcode zone 38×25mm · Batch / Lot · Recycle symbol TBD', citations: [{ ref: 'F5', fileId: 'f-draw', page: 3, quote: 'Barcode zone: 38×25mm' }], pending: true },
+    ],
+  },
+  manualCopy: {
+    sections: [
+      { title: '封面与型号', text: '7-Day Weekly Pill Organizer · Model PO17X4011', citations: [{ ref: 'F1', fileId: 'm-spec', page: 1, quote: 'Model: PO17X4011' }], pending: false },
+      { title: '安全须知', text: 'Keep away from children. This product is not a substitute for professional medical advice.', citations: [{ ref: 'F2', fileId: 'm-warn', page: 1, quote: 'Safety: Keep away from children' }], pending: false },
+      { title: '包装内容', text: '1× Pill organizer, 1× Quick start card', citations: [{ ref: 'F3', fileId: 'm-flow', page: 1, quote: 'Package contents: organizer, quick start card' }], pending: false },
+      { title: '快速开始', text: 'Label each day compartment. Fill vitamins and daily medicine for the full week.', citations: [{ ref: 'C1', fileId: 'mc1', page: 2, quote: 'Label each day compartment.' }], pending: false },
+      { title: '详细使用步骤', text: 'Press lids firmly until you hear a click. Ensure all lids are closed before travel.', citations: [{ ref: 'C2', fileId: 'mc2', page: 3, quote: 'Ensure all lids are fully closed before placing the organizer in a bag.' }], pending: false },
+      { title: '清洁与维护', text: 'Wipe with damp cloth. Do not immerse.', citations: [{ ref: 'F4', fileId: 'm-flow', page: 4, quote: 'Cleaning: wipe with damp cloth only' }], pending: false },
+      { title: '故障排查', text: 'If lids no longer seal properly, discontinue use and contact support.', citations: [{ ref: 'C3', fileId: 'mc3', page: 1, quote: 'Discontinue use if lids no longer seal properly.' }], pending: false },
+      { title: '技术参数', text: 'Net weight 168g · Food-grade PP · Non-powered', citations: [{ ref: 'F1', fileId: 'm-spec', page: 3, quote: 'Net weight: 168g' }], pending: false },
+      { title: '保修与联系方式', text: '12-month limited warranty · support@auvoncare.com', citations: [{ ref: 'F5', fileId: 'm-spec', page: 12, quote: 'support@auvoncare.com' }], pending: true },
+      { title: '合规声明', text: 'CE / FCC. Store in a dry place away from direct sunlight.', citations: [{ ref: 'F2', fileId: 'm-warn', page: 1, quote: 'Store in a dry place away from direct sunlight.' }], pending: false },
+    ],
+  },
+};
+
+window.SKU_PARSED_PACKS = {
+  PO17X4011: {
+    sourceType: '新品Listing',
+    parsedAt: '2026/02/08',
+    data: MOCK_DATA,
   },
 };
 

@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="styles/components/button.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/components/card.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/components/form.css?v=20260509-1710">
-<link rel="stylesheet" href="styles/components/sku-select.css?v=20260509-1710">
+<link rel="stylesheet" href="styles/components/sku-select.css?v=20260920-sku-pack">
 <link rel="stylesheet" href="styles/components/editable.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/components/divider.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/components/toast.css?v=20260509-1710">
@@ -20,25 +20,27 @@
 <link rel="stylesheet" href="styles/pages/topbar.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/pages/layout.css?v=20260509-1710">
 <link rel="stylesheet" href="styles/pages/wizard.css?v=20260605-design-dept">
-<link rel="stylesheet" href="styles/pages/result.css?v=20260608-opt-dual">
+<link rel="stylesheet" href="styles/pages/result.css?v=20260920-sku-pack">
 <link rel="stylesheet" href="styles/pages/demand-list.css?v=20260528-1450">
 <link rel="stylesheet" href="styles/pages/copy-list.css?v=20260612-review-tabs7">
 <link rel="stylesheet" href="styles/pages/workbench.css?v=20260609-no-sales-hint">
 <link rel="stylesheet" href="styles/pages/ops-workbench.css?v=20260601-1501">
-<link rel="stylesheet" href="styles/pages/geo.css?v=20260817-1710">
+<link rel="stylesheet" href="styles/pages/geo.css?v=20260819-1132">
 <link rel="stylesheet" href="styles/pages/design-demand.css?v=20260609-design-sync">
 <link rel="stylesheet" href="styles/pages/competitor-mgr.css?v=20260812-1555">
-<link rel="stylesheet" href="styles/pages/title-board.css?v=20260818-1430">
-<link rel="stylesheet" href="styles/pages/ai-chat.css?v=20260612-note-required">
+<link rel="stylesheet" href="styles/pages/title-board.css?v=20260901-1429">
+<link rel="stylesheet" href="styles/pages/ipd-dossier.css?v=20260903-ipd">
+<link rel="stylesheet" href="styles/pages/ai-chat.css?v=20260918-sheet-align">
 
 <!-- ===== Mock 数据层（必须在主 script 之前加载，因为有顶层立即引用）===== -->
 <!-- 接 API 时只改这些文件 -->
 <script src="scripts/data/req-types.js?v=20260509-1710"></script>
 <script src="scripts/data/persons.js?v=20260509-1710"></script>
 <script src="scripts/data/skus.js?v=20260509-1710"></script>
-<script src="scripts/data/demand-list.js?v=20260525-1704"></script>
-<script src="scripts/data/copy-list.js?v=20260512-1655"></script>
-<script src="scripts/data/result-mock.js?v=20260608-opt-dual"></script>
+<script src="scripts/data/ipd-dossier-mock.js?v=20260903-ipd"></script>
+<script src="scripts/data/demand-list.js?v=20260917-restore"></script>
+<script src="scripts/data/copy-list.js?v=20260920-analysis-timeout-samples"></script>
+<script src="scripts/data/result-mock.js?v=20260920-sku-pack"></script>
 <script src="scripts/data/ai-skills.js?v=20260509-1710"></script>
 <script src="scripts/data/ai-history.js?v=20260509-1710"></script>
 <script src="scripts/data/bg-knowledge.js?v=20260509-1710"></script>
@@ -47,35 +49,36 @@
 <script src="scripts/data/workbench-mock.js?v=20260612-health-summary"></script>
 <script src="scripts/data/design-demand-mock.js?v=20260609-design-sync"></script>
 <script src="scripts/data/insight-report-md.js?v=20260604-1013"></script>
-<script src="scripts/data/title-board-mock.js?v=20260805-1740"></script>
+<script src="scripts/data/title-board-mock.js?v=20260901-1430"></script>
 
 <!-- ===== Core 基础设施（在数据之后、主 inline 脚本之前加载）===== -->
 <script src="scripts/core/icons.js?v=20260509-1710"></script>
 <script src="scripts/core/utils.js?v=20260509-1710"></script>
 <script src="scripts/core/toast.js?v=20260509-1710"></script>
-<script src="scripts/core/router.js?v=20260817-geo"></script>
+<script src="scripts/core/router.js?v=20260903-ipd"></script>
 
 <!-- ===== SheetJS（Excel 生成库，在页面脚本之前加载） ===== -->
 <script src="scripts/vendor/xlsx.full.min.js"></script>
 
 <!-- ===== 页面级 JS（按业务模块） ===== -->
-<script src="scripts/pages/topbar.js?v=20260509-1710"></script>
-<script src="scripts/pages/wizard.js?v=20260605-design-dept"></script>
-<script src="scripts/pages/result.js?v=20260609-design-sync"></script>
-<script src="scripts/pages/demand-list.js?v=20260817-geo"></script>
+<script src="scripts/pages/topbar.js?v=20260920-parse-again"></script>
+<script src="scripts/pages/wizard.js?v=20260920-parse-again"></script>
+<script src="scripts/pages/result.js?v=20260920-sku-pack"></script>
+<script src="scripts/pages/demand-list.js?v=20260917-restore"></script>
+<script src="scripts/pages/ipd-dossier.js?v=20260903-ipd"></script>
 <script src="scripts/pages/competitor-mgr.js?v=20260812-1555"></script>
-<script src="scripts/pages/title-board.js?v=20260818-1430"></script>
+<script src="scripts/pages/title-board.js?v=20260901-1505"></script>
 <script src="scripts/pages/ops-workbench.js?v=20260601-1501"></script>
-<script src="scripts/pages/geo.js?v=20260817-1710"></script>
-<script src="scripts/pages/copy-list.js?v=20260512-1655"></script>
-<script src="scripts/pages/review-list.js?v=20260509-1710"></script>
-<script src="scripts/pages/copy-review-list.js?v=20260612-review-tabs5"></script>
+<script src="scripts/pages/geo.js?v=20260819-1132"></script>
+<script src="scripts/pages/copy-list.js?v=20260920-retry-label"></script>
+<script src="scripts/pages/review-list.js?v=20260917-restore"></script>
+<script src="scripts/pages/copy-review-list.js?v=20260920-no-source"></script>
 <script src="scripts/pages/design-demand-list.js?v=20260609-design-sync"></script>
-<script src="scripts/pages/ai-chat.js?v=20260612-note-required"></script>
+<script src="scripts/pages/ai-chat.js?v=20260921-no-gen-demand"></script>
 <script src="scripts/pages/workbench-trend.js?v=20260604-trend-line"></script>
 
 <!-- ===== 入口（DOMContentLoaded 初始化）===== -->
-<script src="scripts/main.js?v=20260509-1710"></script>
+<script src="scripts/main.js?v=20260917-restore"></script>
 </head>
 <body>
 
@@ -145,6 +148,8 @@
             <option value="老品Title TD">老品 Title TD</option>
             <option value="新品Title">新品 Title</option>
             <option value="新品TD">新品 TD</option>
+            <option value="新品包装盒">新品包装盒</option>
+            <option value="新品说明书">新品说明书</option>
           </select>
         </div>
         <div class="filter-group">
@@ -204,9 +209,17 @@
           </div>
         </div>
         <div class="filter-group">
+          <select class="filter-select" id="f-source" onchange="onFilterSourceChange()">
+            <option value="">全部来源</option>
+            <option value="IPD">IPD 推送</option>
+            <option value="manual">人工创建</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <select class="filter-select" id="f-status" onchange="applyFilters()">
             <option value="">全部状态</option>
             <option value="待审核">待审核</option>
+            <option value="待处理">待处理</option>
             <option value="已通过">已通过</option>
             <option value="已驳回">已驳回</option>
             <option value="处理中">处理中</option>
@@ -228,6 +241,7 @@
         <thead>
           <tr>
             <th style="width:120px;">需求类型</th>
+            <th style="width:72px;">来源</th>
             <th style="width:60px;">站点</th>
             <th style="width:100px;">品牌</th>
             <th style="width:80px;">子品类</th>
@@ -370,7 +384,7 @@
               <th style="width:120px;">期望交付时间</th>
               <th style="width:160px;">审核时间</th>
               <th style="width:90px;">状态</th>
-              <th style="width:200px;">操作</th>
+              <th style="width:260px;">操作</th>
             </tr>
           </thead>
           <tbody id="cf-tbody"></tbody>
@@ -938,7 +952,7 @@
   <!-- 页面头部 -->
   <div class="page-header">
     <h1>创建需求</h1>
-    <p>请按步骤填写需求基础信息并上传需求文件，系统将自动解析并生成需求清单</p>
+    <p>请填写需求基础信息，并上传飞书链接或需求文件后提交</p>
   </div>
 
   <!-- 步骤条 -->
@@ -953,15 +967,15 @@
     <div class="step-item" id="step-indicator-2">
       <div class="step-circle">2</div>
       <div class="step-info">
-        <div class="step-label">上传文件</div>
-        <div class="step-desc">粘贴文档或导入模板</div>
+        <div class="step-label">上传附件</div>
+        <div class="step-desc">飞书链接或文件，开始解析</div>
       </div>
     </div>
     <div class="step-item" id="step-indicator-3">
-      <div class="step-circle">✓</div>
+      <div class="step-circle">3</div>
       <div class="step-info">
-        <div class="step-label">解析完成</div>
-        <div class="step-desc">查看需求解析结果</div>
+        <div class="step-label">解析确认</div>
+        <div class="step-desc">核对解析结果后提交</div>
       </div>
     </div>
   </div>
@@ -1118,6 +1132,7 @@
               </div>
             </div>
             <div class="form-error" id="sku-error">请选择 SKU</div>
+            <div class="sku-parsed-hint" id="sku-parsed-hint" style="display:none;"></div>
           </div>
 
           <!-- 产品开卖时间（仅新品 Listing 展示） -->
@@ -1271,8 +1286,8 @@
       <div class="card-header">
         <div class="card-header-icon" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#10b981;" id="step2-card-icon"></div>
         <div>
-          <h2>上传需求文件</h2>
-          <p>选择一种方式上传需求内容，系统将自动解析为结构化数据</p>
+          <h2>上传需求附件</h2>
+          <p id="step2-card-desc">上传飞书文档链接或文件后开始解析，核对结果再提交</p>
         </div>
       </div>
       <div class="card-body">
@@ -1283,7 +1298,7 @@
             <div class="check" id="method-check-1"></div>
             <div class="method-icon" id="method-icon-1"></div>
             <div class="method-title">飞书文档链接</div>
-            <div class="method-desc">粘贴飞书文档分享链接，系统自动抓取并解析文档内容，支持多个链接</div>
+            <div class="method-desc">粘贴飞书文档分享链接作为需求附件，支持多个链接</div>
             <span class="method-badge method-badge-fast">快速</span>
           </div>
           <div class="method-card" id="method-card-2" onclick="selectMethod(2)">
@@ -1352,7 +1367,7 @@
             <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)" />
             <div class="upload-icon" id="upload-icon"></div>
             <h4>点击选择文件或拖拽至此</h4>
-            <p>填写完模板后，将文件上传至此处进行解析</p>
+            <p>填写完模板后，将文件上传至此作为需求附件</p>
             <div class="upload-formats">
               <span class="format-tag">XLSX</span>
               <span class="format-tag">XLS</span>
@@ -1366,7 +1381,7 @@
               <div class="uploaded-file-icon" id="uploaded-file-icon"></div>
               <div class="uploaded-file-info">
                 <div class="fname" id="uploaded-fname">需求模板.xlsx</div>
-                <div class="fsize" id="uploaded-fsize">2.3 MB · 准备解析</div>
+                <div class="fsize" id="uploaded-fsize">2.3 MB · 已选择</div>
               </div>
               <button class="uploaded-file-remove" onclick="removeFile()" title="移除文件">✕</button>
             </div>
@@ -1378,7 +1393,7 @@
         <div class="action-bar">
           <button class="btn btn-secondary" onclick="goToStep1()" id="step2-prev-btn"></button>
           <div class="action-bar-right">
-            <button class="btn btn-primary btn-lg" onclick="startParsing()" id="start-parse-btn"></button>
+            <button class="btn btn-primary btn-lg" onclick="confirmStep2()" id="start-parse-btn"></button>
           </div>
         </div>
 
@@ -1390,6 +1405,7 @@
 
 <!-- ===== 结果页（全宽布局）===== -->
 <div id="result-main" style="display:none;">
+  <div class="result-reuse-banner" id="result-reuse-banner" style="display:none;"></div>
 
   <div class="result-layout">
     <!-- 左侧锚点导航 -->
@@ -1645,6 +1661,28 @@
       <button type="button" class="btn btn-secondary" onclick="regenerateCopyDrafts()">重新生成</button>
       <button type="button" class="btn btn-primary" onclick="enterAiChatWithSelectedDraft()">选择此版本并进入调优</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== 手动提交文案审核 ===== -->
+<div
+  class="aichat-submit-modal-overlay"
+  id="copy-manual-submit-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="copy-manual-title"
+  onclick="if(event.target===this)closeManualCopySubmit()"
+>
+  <div class="aichat-submit-modal-box copy-manual-page-box" onclick="event.stopPropagation()">
+    <div class="aichat-submit-modal-head">
+      <div>
+        <h3 id="copy-manual-title">手动提交审核</h3>
+        <p id="copy-manual-subtitle">先查看本条需求清单，再填写终稿提交审核</p>
+      </div>
+      <button type="button" class="aichat-submit-modal-close" onclick="closeManualCopySubmit()" title="关闭">×</button>
+    </div>
+    <div class="aichat-submit-modal-body" id="copy-manual-body"></div>
+    <div class="aichat-submit-modal-foot" id="copy-manual-foot"></div>
   </div>
 </div>
 

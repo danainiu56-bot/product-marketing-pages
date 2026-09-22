@@ -76,5 +76,9 @@ const REQ_TYPE_STYLES = {
   '老品TD':        'req-type-cyan',    // 青
   '老品Title TD':  'req-type-old',     // 石板灰
   '卖点视频':      'req-type-listing', // 绿
+  '新品包装盒':    'req-type-package',
+  '老品包装盒':    'req-type-package',
+  '新品说明书':    'req-type-manual',
+  '老品说明书':    'req-type-manual',
 };
 

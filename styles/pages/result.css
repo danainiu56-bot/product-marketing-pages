@@ -7,6 +7,17 @@
   =================================================== */
 
   /* 顶部摘要条 */
+  .result-reuse-banner {
+    margin: 12px 24px 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #3730a3;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+  }
   .result-top-bar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;

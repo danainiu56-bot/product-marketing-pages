@@ -8,6 +8,9 @@ let skuList = [];
 let currentMethod = 1;
 let uploadedFile = null;
 let designDeptEnabled = false;
+let forceReparse = false;
+let skuPackReuseMode = false;
+let parsingInProgress = false;
 
 // ===== API 配置 =====
 // 通过本地代理走，避免 CORS 重复头问题（dev-server.py 已转发 /prod-api/* 到真实服务器）
@@ -200,6 +203,7 @@ async function onSubcategoryChange(opts = {}) {
     renderSkuTrigger();
     renderSkuChips();
     document.getElementById('sku-error').classList.remove('show');
+    if (typeof updateSkuParsedHint === 'function') updateSkuParsedHint();
     return;
   }
 
@@ -213,6 +217,7 @@ async function onSubcategoryChange(opts = {}) {
   renderSkuTrigger();
   renderSkuChips();
   document.getElementById('sku-error').classList.remove('show');
+  if (typeof updateSkuParsedHint === 'function') updateSkuParsedHint();
 }
 
 function toggleSkuDropdown(e) {
@@ -265,11 +270,12 @@ function renderSkuOptions() {
   }
   list.innerHTML = filtered.map(s => {
     const selected = skuList[0] === s.code;
+    const packBadge = hasSkuParsedPack(s.code) ? '<span class="sku-pack-badge">已有资料</span>' : '';
     return `
       <div class="sku-option single ${selected ? 'selected' : ''}" onclick="selectSku('${s.code}')">
         <div class="sku-option-radio"></div>
         <div class="sku-option-info">
-          <div class="sku-option-code">${s.code}</div>
+          <div class="sku-option-code">${s.code}${packBadge}</div>
           <div class="sku-option-name">${s.name}</div>
         </div>
       </div>
@@ -284,6 +290,7 @@ function selectSku(code) {
   document.getElementById('sku-error').classList.remove('show');
   document.getElementById('sku-trigger').style.borderColor = '';
   closeSkuDropdown();
+  updateSkuParsedHint();
 }
 
 function clearAllSku(e) {
@@ -291,12 +298,14 @@ function clearAllSku(e) {
   skuList = [];
   renderSkuOptions();
   renderSkuTrigger();
+  updateSkuParsedHint();
 }
 
 function removeSku(code) {
   skuList = [];
   renderSkuOptions();
   renderSkuTrigger();
+  updateSkuParsedHint();
 }
 
 function renderSkuTrigger() {
@@ -465,7 +474,76 @@ function getDesignDeliveryDate() {
 }
 
 // ===== 步骤导航 =====
+function getSkuParsedPacks() {
+  if (!window.SKU_PARSED_PACKS) window.SKU_PARSED_PACKS = {};
+  return window.SKU_PARSED_PACKS;
+}
+
+function getSkuParsedPack(code) {
+  if (!code) return null;
+  return getSkuParsedPacks()[code] || null;
+}
+
+function hasSkuParsedPack(code) {
+  return !!getSkuParsedPack(code);
+}
+
+function shouldReuseSkuPack() {
+  return !forceReparse && hasSkuParsedPack(skuList[0]);
+}
+
+function saveSkuParsedPack(code, extra = {}) {
+  if (!code) return;
+  const packs = getSkuParsedPacks();
+  const prev = packs[code] || {};
+  packs[code] = {
+    sourceType: extra.sourceType || (typeof buildDemandListType === 'function' ? buildDemandListType() : prev.sourceType) || '新品Listing',
+    parsedAt: extra.parsedAt || (typeof formatDemandDateTime === 'function' ? formatDemandDateTime(new Date()).slice(0, 10) : prev.parsedAt) || '',
+    data: (typeof MOCK_DATA !== 'undefined' ? MOCK_DATA : prev.data) || {},
+  };
+}
+
+function updateSkuParsedHint() {
+  const hint = document.getElementById('sku-parsed-hint');
+  const nextBtn = document.getElementById('step1-next-btn');
+  const pack = getSkuParsedPack(skuList[0]);
+  if (hint) {
+    if (pack && skuList[0]) {
+      hint.style.display = '';
+      hint.textContent = `该 SKU 已有解析资料（来源：${pack.sourceType} · ${pack.parsedAt}），本次将直接带入，无需重新解析。`;
+    } else {
+      hint.style.display = 'none';
+      hint.textContent = '';
+    }
+  }
+  if (nextBtn && typeof I === 'function') {
+    nextBtn.innerHTML = pack
+      ? `<span>下一步：查看已有资料</span>${I('arrowR', 14)}`
+      : `<span>下一步：上传附件</span>${I('arrowR', 14)}`;
+  }
+}
+
+function syncStep2ReparseUi() {
+  const desc = document.getElementById('step2-card-desc');
+  const btn = document.getElementById('start-parse-btn');
+  if (desc) {
+    desc.textContent = forceReparse
+      ? '请重新上传飞书链接或文件，系统将重新解析并覆盖该 SKU 已有资料'
+      : '上传飞书文档链接或文件后开始解析，核对结果再提交';
+  }
+  if (btn && typeof I === 'function') {
+    btn.innerHTML = `${I('check', 16)}<span>开始解析</span>`;
+  }
+}
+
+function openReusedResultPage() {
+  skuPackReuseMode = true;
+  if (typeof showResultPage === 'function') showResultPage();
+}
+
 function goToStep1() {
+  forceReparse = false;
+  skuPackReuseMode = false;
   setStep(1);
 }
 
@@ -474,15 +552,27 @@ function goToStep2() {
     showToast('请完善必填信息后继续', 'warning');
     return;
   }
+  if (shouldReuseSkuPack()) {
+    openReusedResultPage();
+    return;
+  }
   buildSummaryTags();
+  syncStep2ReparseUi();
   setStep(2);
 }
 
 function setStep(n) {
-  [1, 2, 3].forEach(i => {
+  if (n === 1) {
+    forceReparse = false;
+    skuPackReuseMode = false;
+  }
+  [1, 2].forEach(i => {
     document.getElementById(`step-panel-${i}`) &&
       document.getElementById(`step-panel-${i}`).classList.remove('active');
+  });
+  [1, 2, 3].forEach(i => {
     const ind = document.getElementById(`step-indicator-${i}`);
+    if (!ind) return;
     ind.classList.remove('active', 'completed');
     if (i < n) ind.classList.add('completed');
     if (i === n) ind.classList.add('active');
@@ -820,7 +910,7 @@ function updateFeishuLinkRow(id) {
     statusEl.innerHTML = `<span>✓</span><span>${docInfo.label}</span>`;
     if (previewEl) {
       previewEl.classList.add('show');
-      previewEl.innerHTML = `<div class="preview-title">${docInfo.icon} ${docInfo.label}</div><div>链接已识别，将在解析时自动抓取内容</div>`;
+      previewEl.innerHTML = `<div class="preview-title">${docInfo.icon} ${docInfo.label}</div><div>链接已识别，将作为需求附件提交</div>`;
     }
   } else {
     row.classList.add('invalid');
@@ -915,7 +1005,7 @@ function processFile(file) {
   uploadedFile = file;
   document.getElementById('uploaded-fname').textContent = file.name;
   document.getElementById('uploaded-fsize').textContent =
-    `${(file.size / 1024).toFixed(1)} KB · 准备解析`;
+    `${(file.size / 1024).toFixed(1)} KB · 已选择`;
   document.getElementById('uploaded-file-display').style.display = 'block';
   document.getElementById('file-error').classList.remove('show');
   showToast(`文件 "${file.name}" 已选择`, 'success');
@@ -987,82 +1077,163 @@ function downloadTemplate() {
   showToast('模板已下载，请按格式填写后上传', 'success');
 }
 
-// ===== 解析流程 =====
-function startParsing() {
-  // 验证
+function padDemandTimePart(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatDemandDateTime(d) {
+  return `${d.getFullYear()}/${padDemandTimePart(d.getMonth() + 1)}/${padDemandTimePart(d.getDate())} ${padDemandTimePart(d.getHours())}:${padDemandTimePart(d.getMinutes())}:${padDemandTimePart(d.getSeconds())}`;
+}
+
+function formatDemandDate(value) {
+  if (!value) return '';
+  return String(value).replace(/-/g, '/');
+}
+
+function inferBrandFromSku(skuInfo) {
+  const name = (skuInfo && skuInfo.name) || '';
+  if (/ZIKEE/i.test(name)) return 'ZIKEE';
+  if (/AMOOS/i.test(name)) return 'AMOOS';
+  return 'AUVON';
+}
+
+function buildDemandListType() {
+  const key = document.getElementById('req-type') ? document.getElementById('req-type').value : '';
+  const label = (typeof buildReqTypeLabel === 'function' && buildReqTypeLabel())
+    || (typeof reqTypeLabels !== 'undefined' && reqTypeLabels[key])
+    || '';
+  return String(label).replace(/\s*·\s*/g, '') || '新品Listing';
+}
+
+function collectStep2Attachment() {
   if (currentMethod === 1) {
     const validLinks = getValidFeishuLinks();
     const hasAnyInput = feishuLinks.some(l => l.url);
+    const err = document.getElementById('feishu-error');
     if (!hasAnyInput) {
-      document.getElementById('feishu-error').textContent = '请至少添加一个飞书文档链接';
-      document.getElementById('feishu-error').classList.add('show');
+      if (err) {
+        err.textContent = '请至少添加一个飞书文档链接';
+        err.classList.add('show');
+      }
       showToast('请先添加飞书文档链接', 'warning');
-      return;
+      return null;
     }
     if (validLinks.length === 0) {
-      document.getElementById('feishu-error').textContent = '请检查链接格式，需为有效的飞书 / Lark 链接';
-      document.getElementById('feishu-error').classList.add('show');
+      if (err) {
+        err.textContent = '请检查链接格式，需为有效的飞书 / Lark 链接';
+        err.classList.add('show');
+      }
       showToast('链接格式不正确', 'warning');
-      return;
+      return null;
     }
     const invalidCount = feishuLinks.filter(l => l.url && !l.valid).length;
     if (invalidCount > 0) {
-      showToast(`存在 ${invalidCount} 个无效链接，将仅解析有效链接`, 'warning');
+      showToast(`存在 ${invalidCount} 个无效链接，将仅提交有效链接`, 'warning');
     }
-  } else {
-    if (!uploadedFile) {
-      document.getElementById('file-error').classList.add('show');
-      showToast('请先上传需求文件', 'warning');
-      return;
-    }
+    if (err) err.classList.remove('show');
+    return { kind: 'feishu', urls: validLinks.map(l => l.url) };
+  }
+  if (!uploadedFile) {
+    const fileErr = document.getElementById('file-error');
+    if (fileErr) fileErr.classList.add('show');
+    showToast('请先上传需求文件', 'warning');
+    return null;
+  }
+  return { kind: 'file', fileName: uploadedFile.name };
+}
+
+function buildSubmittedDemandRow(attachment) {
+  const skuCode = skuList[0] || '';
+  const skuInfo = (typeof allSkusData !== 'undefined' ? allSkusData : []).find(s => s.code === skuCode);
+  const siteVal = document.getElementById('site') ? document.getElementById('site').value : 'us';
+  const subValue = document.getElementById('subcategory') ? document.getElementById('subcategory').value : '';
+  const delivery = document.getElementById('delivery-date') ? document.getElementById('delivery-date').value : '';
+  const launch = document.getElementById('product-launch-date') ? document.getElementById('product-launch-date').value : '';
+  const remark = document.getElementById('demand-remark') ? document.getElementById('demand-remark').value : '';
+  const now = new Date();
+  return {
+    type: buildDemandListType(),
+    site: String(siteVal || 'us').toUpperCase(),
+    brand: inferBrandFromSku(skuInfo),
+    sub: typeof getSubcategoryLabel === 'function' ? getSubcategoryLabel(subValue) : subValue,
+    name: skuInfo ? skuInfo.name : skuCode,
+    sku: skuCode,
+    bu: '物理治疗',
+    bu_lead: 'Suki',
+    op: 'Jessi',
+    writer: 'Yumi',
+    status: '待审核',
+    submit_time: formatDemandDateTime(now),
+    launch_date: formatDemandDate(launch),
+    date: formatDemandDate(delivery) || formatDemandDateTime(now).slice(0, 10),
+    source: 'manual',
+    remark,
+    attachment,
+  };
+}
+
+function submitDemandFromStep2() {
+  if (typeof validateStep1 === 'function' && !validateStep1()) {
+    showToast('请完善必填信息后继续', 'warning');
+    setStep(1);
+    return;
+  }
+  const attachment = collectStep2Attachment();
+  if (!attachment) return;
+
+  const row = buildSubmittedDemandRow(attachment);
+  if (typeof LIST_DATA !== 'undefined') LIST_DATA.unshift(row);
+  if (typeof applyFilters === 'function') applyFilters();
+
+  const designQueued = typeof isDesignDeptEnabled === 'function' && isDesignDeptEnabled();
+  if (designQueued && typeof tryCreateDesignTaskOnSubmit === 'function') {
+    tryCreateDesignTaskOnSubmit();
   }
 
-  // 显示解析遮罩
+  showToast('需求已提交，进入排期队列', 'success');
+  if (typeof resetStep1 === 'function') resetStep1();
+  if (typeof clearAllFeishuLinks === 'function') clearAllFeishuLinks();
+  if (typeof removeFile === 'function') removeFile();
+  if (typeof goToList === 'function') goToList();
+  if (typeof showCopywritingView === 'function') showCopywritingView();
+}
+
+function confirmStep2() {
+  startParsing();
+}
+
+function startParsing() {
+  if (parsingInProgress) return;
+  const attachment = collectStep2Attachment();
+  if (!attachment) return;
+
+  parsingInProgress = true;
   const overlay = document.getElementById('parsing-overlay');
-  overlay.classList.add('show');
-
-  // 重置步骤
-  [1,2,3,4].forEach(i => {
+  const bar = document.getElementById('progress-bar');
+  if (overlay) overlay.classList.add('show');
+  [1, 2, 3, 4].forEach(i => {
     const el = document.getElementById(`pstep-${i}`);
-    el.className = 'parsing-step-item pending';
-    el.querySelector('.psi-dot').textContent = i;
+    if (el) el.className = 'parsing-step-item pending';
   });
-  document.getElementById('progress-bar').style.width = '0%';
+  if (bar) bar.style.width = '0%';
 
-  // 模拟解析步骤
-  const steps = [
-    { delay: 400, progress: 20 },
-    { delay: 1100, progress: 50 },
-    { delay: 1800, progress: 78 },
-    { delay: 2500, progress: 95 },
-  ];
-
-  steps.forEach((s, idx) => {
-    // 激活当前步骤
-    setTimeout(() => {
-      if (idx > 0) {
-        const prev = document.getElementById(`pstep-${idx}`);
-        prev.className = 'parsing-step-item done';
-        prev.querySelector('.psi-dot').textContent = '✓';
-      }
-      const cur = document.getElementById(`pstep-${idx + 1}`);
-      cur.className = 'parsing-step-item active';
-      document.getElementById('progress-bar').style.width = s.progress + '%';
-    }, s.delay);
-  });
-
-  // 完成
+  const markStep = (idx, width) => {
+    const el = document.getElementById(`pstep-${idx}`);
+    if (el) el.className = 'parsing-step-item done';
+    if (bar) bar.style.width = width;
+  };
+  setTimeout(() => markStep(1, '25%'), 400);
+  setTimeout(() => markStep(2, '50%'), 900);
+  setTimeout(() => markStep(3, '75%'), 1400);
+  setTimeout(() => markStep(4, '100%'), 1900);
   setTimeout(() => {
-    const last = document.getElementById('pstep-4');
-    last.className = 'parsing-step-item done';
-    last.querySelector('.psi-dot').textContent = '✓';
-    document.getElementById('progress-bar').style.width = '100%';
-  }, 3100);
-
-  setTimeout(() => {
-    overlay.classList.remove('show');
-    showResultPage();
-  }, 3600);
+    if (overlay) overlay.classList.remove('show');
+    saveSkuParsedPack(skuList[0]);
+    forceReparse = false;
+    skuPackReuseMode = false;
+    parsingInProgress = false;
+    if (typeof showResultPage === 'function') showResultPage();
+  }, 2400);
 }
 
 // ===== 结果页 =====

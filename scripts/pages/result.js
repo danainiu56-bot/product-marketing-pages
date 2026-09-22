@@ -13,7 +13,8 @@ function showResultPage() {
     ind.classList.remove('active');
     ind.classList.add('completed');
   });
-  document.getElementById('step-indicator-3').classList.add('active');
+  const step3 = document.getElementById('step-indicator-3');
+  if (step3) step3.classList.add('active');
 
   // 隐藏向导，显示结果
   document.getElementById('wizard-main').style.display = 'none';
@@ -49,6 +50,7 @@ function showResultPage() {
   else if (window.__resultScroll) window.removeEventListener('scroll', window.__resultScroll);
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (typeof renderResultReuseBanner === 'function') renderResultReuseBanner();
   // 持久化视图
   if (typeof saveView === 'function') {
     saveView('result');
@@ -115,8 +117,22 @@ function isOptimizationImageDemand() {
   return stage === 'old' && biz === 'listing7';
 }
 
+function isPackageDemand() {
+  return getCurrentResultType().biz === 'package';
+}
+
+function isManualDemand() {
+  return getCurrentResultType().biz === 'manual';
+}
+
 function getActiveResultModules() {
   const { biz, sub } = getCurrentResultType();
+  if (isPackageDemand()) {
+    return ['mod-basic', 'mod-package-faces'].map(id => RESULT_MODULES.find(m => m.id === id)).filter(Boolean);
+  }
+  if (isManualDemand()) {
+    return ['mod-basic', 'mod-manual-sections'].map(id => RESULT_MODULES.find(m => m.id === id)).filter(Boolean);
+  }
   const listingModules = ['mod-basic', 'mod-product', 'mod-seo', 'mod-competitor', 'mod-selling', 'mod-audience', 'mod-pain', 'mod-stp'];
   if (isOptimizationImageDemand()) {
     return ['mod-basic', 'mod-image-opt-creative', 'mod-richtext-opt-info'].map(id => RESULT_MODULES.find(m => m.id === id)).filter(Boolean);
@@ -129,8 +145,8 @@ function getActiveResultModules() {
     titletd: listingModules,
     listing7: ['mod-basic', 'mod-product', 'mod-prod-comp', 'mod-selling', 'mod-image-creative', 'mod-richtext-info'],
     video: ['mod-basic', 'mod-product', 'mod-selling', 'mod-audience', 'mod-pain'],
-    package: ['mod-basic', 'mod-product', 'mod-selling', 'mod-audience', 'mod-pain'],
-    manual: ['mod-basic', 'mod-product', 'mod-selling', 'mod-audience', 'mod-pain'],
+    package: ['mod-basic', 'mod-package-faces'],
+    manual: ['mod-basic', 'mod-manual-sections'],
     faq: ['mod-basic', 'mod-product', 'mod-audience', 'mod-pain', 'mod-selling', 'mod-competitor', 'mod-faq-extra'],
     ad: ['mod-basic', 'mod-product', 'mod-seo', 'mod-selling', 'mod-audience'],
     grass: ['mod-basic', 'mod-product', 'mod-selling', 'mod-audience', 'mod-pain'],
@@ -209,6 +225,8 @@ function renderModuleCard(m) {
     case 'mod-image-creative': bodyHtml = renderImageCreative(); break;
     case 'mod-richtext-info': bodyHtml = renderRichTextInfo(); break;
     case 'mod-faq-extra':  bodyHtml = renderFaqExtra(); break;
+    case 'mod-package-faces': bodyHtml = renderPackageFaces(); break;
+    case 'mod-manual-sections': bodyHtml = renderManualSections(); break;
   }
   const meta = getModuleMeta(m.id);
   return `
@@ -286,6 +304,14 @@ function getModuleMeta(id) {
     }
     case 'mod-video-display': return [{ text: `${MOCK_DATA.sellingVideo.displays.length} 个展示镜头`, cls: 'ok' }];
     case 'mod-faq-extra':  return [{ text: `${(MOCK_DATA.faqSupplement.screenshots || []).length} 张截图`, cls: 'ok' }];
+    case 'mod-package-faces': {
+      const n = (MOCK_DATA.packageCopy && MOCK_DATA.packageCopy.faces) ? MOCK_DATA.packageCopy.faces.length : 0;
+      return [{ text: `${n} 面文案`, cls: 'ok' }, { text: '含引用', cls: '' }];
+    }
+    case 'mod-manual-sections': {
+      const n = (MOCK_DATA.manualCopy && MOCK_DATA.manualCopy.sections) ? MOCK_DATA.manualCopy.sections.length : 0;
+      return [{ text: `${n} 章节`, cls: 'ok' }, { text: '含引用', cls: '' }];
+    }
     default: return [];
   }
 }
@@ -405,6 +431,41 @@ function initProductImageUploads(root = document) {
       }
     });
   });
+}
+
+// ===== IPD 包装 / 说明书引用式文案 =====
+function renderCitedParagraph(text, citations, pending) {
+  const citeHtml = (citations || []).map(c =>
+    `<span class="cite-chip" onclick="showCitationDetail('${c.ref}','${String(c.fileId || '').replace(/'/g, "\\'")}',${c.page || 0},'${String(c.quote || '').replace(/'/g, "\\'")}')" title="${String(c.quote || '').replace(/"/g, '&quot;')}">[${c.ref}]</span>`
+  ).join('');
+  const pendingHtml = pending ? '<span class="cite-pending">待确认</span>' : '';
+  return `${text}${citeHtml}${pendingHtml}`;
+}
+
+function showCitationDetail(ref, fileId, page, quote) {
+  showToast(`[${ref}] ${fileId} p.${page} — ${quote}`, 'success', 6000);
+}
+
+function renderPackageFaces() {
+  const faces = (MOCK_DATA.packageCopy && MOCK_DATA.packageCopy.faces) || [];
+  return `<div class="ipd-copy-list">
+    ${faces.map(f => `
+      <div class="ipd-copy-block">
+        <div class="ipd-copy-face">${f.face}</div>
+        <div class="ipd-copy-text">${renderCitedParagraph(f.text, f.citations, f.pending)}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderManualSections() {
+  const sections = (MOCK_DATA.manualCopy && MOCK_DATA.manualCopy.sections) || [];
+  return `<div class="ipd-copy-list">
+    ${sections.map(s => `
+      <div class="ipd-copy-block">
+        <div class="ipd-copy-face">${s.title}</div>
+        <div class="ipd-copy-text">${renderCitedParagraph(s.text, s.citations, s.pending)}</div>
+      </div>`).join('')}
+  </div>`;
 }
 
 // ===== 1. 基础信息 =====
@@ -2350,10 +2411,29 @@ function copyModalContent() {
 }
 
 // ===== 结果页操作 =====
+function renderResultReuseBanner() {
+  const el = document.getElementById('result-reuse-banner');
+  if (!el) return;
+  const pack = (typeof skuPackReuseMode !== 'undefined' && skuPackReuseMode && typeof getSkuParsedPack === 'function')
+    ? getSkuParsedPack(typeof skuList !== 'undefined' ? skuList[0] : '')
+    : null;
+  if (!pack) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const sku = (typeof skuList !== 'undefined' && skuList[0]) || '';
+  el.style.display = '';
+  el.innerHTML = `已沿用 SKU <strong>${sku}</strong> 于 ${pack.parsedAt} 解析的资料（来源：${pack.sourceType}）。如与本次需求不符，请返回上一步重新上传。`;
+}
+
 function backToWizard() {
+  skuPackReuseMode = false;
+  forceReparse = true;
   document.getElementById('result-main').style.display = 'none';
   document.getElementById('wizard-main').style.display = 'block';
   setStep(2);
+  if (typeof syncStep2ReparseUi === 'function') syncStep2ReparseUi();
   if (window.__resultScroll) window.removeEventListener('scroll', window.__resultScroll);
 }
 
@@ -2508,6 +2588,9 @@ function resetStep1() {
   renderSkuTrigger();
   renderSkuChips();
   renderSkuOptions();
+  forceReparse = false;
+  skuPackReuseMode = false;
+  if (typeof updateSkuParsedHint === 'function') updateSkuParsedHint();
 }
 
 function clearUpload() {

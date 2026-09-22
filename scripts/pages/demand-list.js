@@ -82,6 +82,7 @@ function onPersonTypeChange() {
 // ===== SKU 筛选下拉 =====
 let filterSkuValue = '';
 let filterSkuQuery = '';
+let filterSourceValue = '';
 
 // 从表格数据自动生成候选 SKU 列表（去重）+ 补充演示数据
 // 注：API 加载成功后会被覆盖
@@ -321,6 +322,7 @@ function applyFilters() {
     brand: document.getElementById('f-brand').value,
     sub: document.getElementById('f-subcategory').value,
     sku: filterSkuValue,
+    source: filterSourceValue,
     person: personValue,
     personType: personType,
     status: document.getElementById('f-status').value,
@@ -331,6 +333,8 @@ function applyFilters() {
     if (currentFilters.brand && row.brand !== currentFilters.brand) return false;
     if (currentFilters.sub && row.sub !== currentFilters.sub) return false;
     if (currentFilters.sku && row.sku !== currentFilters.sku) return false;
+    if (currentFilters.source === 'IPD' && row.source !== 'IPD') return false;
+    if (currentFilters.source === 'manual' && row.source === 'IPD') return false;
     if (currentFilters.person) {
       if (personType === 'writer' && row.writer !== currentFilters.person) return false;
       if (personType === 'op' && row.op !== currentFilters.person) return false;
@@ -346,10 +350,11 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  ['f-req-type','f-site','f-brand','f-subcategory','f-status'].forEach(id => {
+  ['f-req-type','f-site','f-brand','f-subcategory','f-status','f-source'].forEach(id => {
     const el = document.getElementById(id);
-    el.value = '';
+    if (el) el.value = '';
   });
+  filterSourceValue = '';
   // 重置 SKU 选择器
   filterSkuValue = '';
   filterSkuQuery = '';
@@ -367,14 +372,17 @@ function renderAppliedFilters() {
   const wrap = document.getElementById('filter-applied');
   const labels = {
     type: '需求类型', site: '站点', brand: '品牌', sub: '子品类',
-    sku: 'SKU', status: '状态'
+    sku: 'SKU', status: '状态', source: '来源',
   };
   const items = [];
-  ['type','site','brand','sub','sku','status'].forEach(k => {
+  ['type','site','brand','sub','sku','source','status'].forEach(k => {
     if (currentFilters[k]) {
+      const val = k === 'source'
+        ? (currentFilters[k] === 'IPD' ? 'IPD' : '人工创建')
+        : currentFilters[k];
       items.push(`<span class="filter-chip">
         <span class="chip-key">${labels[k]}：</span>
-        <span class="chip-val">${currentFilters[k]}</span>
+        <span class="chip-val">${val}</span>
         <span class="chip-remove" onclick="removeFilter('${k}')">✕</span>
       </span>`);
     }
@@ -396,12 +404,16 @@ function renderAppliedFilters() {
 
 function removeFilter(key) {
   const idMap = { type: 'f-req-type', site: 'f-site', brand: 'f-brand', sub: 'f-subcategory',
-                  status: 'f-status' };
+                  status: 'f-status', source: 'f-source' };
   if (key === 'person') {
     document.getElementById('f-person-value').value = '';
   } else if (key === 'sku') {
     filterSkuValue = '';
     updateFilterSkuTrigger();
+  } else if (key === 'source') {
+    filterSourceValue = '';
+    const el = document.getElementById('f-source');
+    if (el) el.value = '';
   } else {
     const el = document.getElementById(idMap[key]);
     if (el) el.value = '';
@@ -414,7 +426,7 @@ function renderListTable() {
   if (!tbody) return;
   currentListData = sortDemandListByStatus(currentListData);
   if (currentListData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="16" style="text-align:center;padding:60px 16px;color:var(--text-light);">
+    tbody.innerHTML = `<tr><td colspan="17" style="text-align:center;padding:60px 16px;color:var(--text-light);">
       <div style="font-size:28px;margin-bottom:8px;">📭</div>
       <div>没有匹配的数据</div>
     </td></tr>`;
@@ -434,8 +446,10 @@ function renderListTable() {
       '已撤回': 'status-withdrawn',
     };
     const statusCls = statusClsMap[r.status] || 'status-doing';
+    const sourceBadge = typeof renderSourceBadge === 'function' ? renderSourceBadge(r) : '—';
     return `<tr onclick="onRowClick('${r.sku}')">
       <td><span class="req-type-pill ${typeCls}">${r.type}</span></td>
+      <td>${sourceBadge}</td>
       <td>${r.site}</td>
       <td><span class="brand-tag ${brandCls}">${r.brand}</span></td>
       <td>${r.sub}</td>
@@ -458,4 +472,10 @@ function renderListTable() {
 
 function onRowClick(sku) {
   showToast(`查看详情：${sku}`, 'success');
+}
+
+function onFilterSourceChange() {
+  const el = document.getElementById('f-source');
+  filterSourceValue = el ? el.value : '';
+  applyFilters();
 }

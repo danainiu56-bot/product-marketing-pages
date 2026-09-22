@@ -135,6 +135,10 @@ function openCopyDraftPicker(encodedKey) {
     showToast('未找到对应文案需求', 'warning');
     return;
   }
+  if (typeof isCopyAnalysisBlockingGenerate === 'function' && isCopyAnalysisBlockingGenerate(row)) {
+    showToast(getCopyRowAnalysisStatus(row) === 'running' ? '分析进行中，请稍候' : '分析数据超时，请先点击「重试」', 'warning');
+    return;
+  }
   copyDraftPickerState = {
     row,
     drafts: buildCopyDraftCandidates(row, 0),
@@ -1794,6 +1798,14 @@ function isAiImageCopyRequest() {
 function getAiImageCopySubmitItems(messageText) {
   const raw = String(messageText || '');
   const numMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7 };
+  const gallery = (typeof MOCK_DATA !== 'undefined' && MOCK_DATA.imageCreative && Array.isArray(MOCK_DATA.imageCreative.gallery))
+    ? MOCK_DATA.imageCreative.gallery
+    : [];
+  const refByImage = gallery.reduce((acc, item) => {
+    const refs = Array.isArray(item.referenceImages) ? item.referenceImages : [];
+    acc[item.image] = (refs[0] && refs[0].url) || '';
+    return acc;
+  }, {});
   const parsed = [];
   const blockReg = /图片([一二三四五六七1-7])[:：]\s*([^\n]+)\n([\s\S]*?)(?=\n\n图片[一二三四五六七1-7][:：]|\n\n【AI 自评理由】|$)/g;
   let match;
@@ -1805,18 +1817,17 @@ function getAiImageCopySubmitItems(messageText) {
       productPoint: match[2].trim(),
       imageCopy: match[3].trim(),
       advantage: '',
+      referenceImage: refByImage[image] || '',
     });
   }
   if (parsed.length) return parsed;
 
-  const gallery = (typeof MOCK_DATA !== 'undefined' && MOCK_DATA.imageCreative && Array.isArray(MOCK_DATA.imageCreative.gallery))
-    ? MOCK_DATA.imageCreative.gallery
-    : [];
   return gallery.slice(0, 7).map((item, idx) => ({
     image: item.image || (idx === 0 ? '主图' : `图${idx + 1}`),
     productPoint: item.productPoint || item.advantage || '',
     imageCopy: item.imageCopy || '',
     advantage: item.advantage || '',
+    referenceImage: (item.referenceImages && item.referenceImages[0] && item.referenceImages[0].url) || '',
   }));
 }
 
@@ -1870,21 +1881,6 @@ function normalizeAiSubmitTagsForText(text, tags) {
     }, []);
 }
 
-function renderAiSubmitTaggedText(text, tags) {
-  const content = String(text || '');
-  const validTags = normalizeAiSubmitTagsForText(content, tags);
-  if (!validTags.length) return escapeAiHtml(content || '选中文案片段并添加标签后，这里会显示原文角标。');
-  let cursor = 0;
-  let html = '';
-  validTags.forEach(item => {
-    html += escapeAiHtml(content.slice(cursor, item.start));
-    html += `<mark class="aichat-inline-tag aichat-inline-tag-${getAiSubmitTagClass(item.tag)}"><sup>${escapeAiHtml(item.tag)}</sup><span>${escapeAiHtml(content.slice(item.start, item.end))}</span></mark>`;
-    cursor = item.end;
-  });
-  html += escapeAiHtml(content.slice(cursor));
-  return html;
-}
-
 function renderAiSubmitOverlayText(text, tags) {
   const content = String(text || '');
   const validTags = normalizeAiSubmitTagsForText(content, tags);
@@ -1912,27 +1908,20 @@ function syncAiSubmitTagOverlayScroll(field, textareaId) {
   }
 }
 
-function renderAiSubmitTagTools(field, textareaId, options) {
+function renderAiSubmitTagTools(field, textareaId) {
   const key = aiSubmitTagFieldKey(field);
-  const inlineOnly = options && options.inlineOnly;
   return `<div class="aichat-submit-tag-tools" data-tag-field="${escapeAiHtml(field)}">
     <span>选中文本添加标签</span>
     ${AI_SUBMIT_TEXT_TAGS.map(tag => `<button type="button" onclick="addAiSubmitTextTag('${field}', '${textareaId}', '${tag}')">${tag}</button>`).join('')}
   </div>
-  ${inlineOnly ? '' : `<div class="aichat-submit-tag-preview">
-    <div class="aichat-submit-tag-preview-title">原文标注 <em>标签会显示在对应词上方</em></div>
-    <div class="aichat-submit-tag-preview-text" id="submit-tag-preview-${key}">${renderAiSubmitTaggedText('', [])}</div>
-  </div>`}
   <div class="aichat-submit-tag-list" id="submit-tag-list-${key}"></div>`;
 }
 
 function renderAiSubmitTagPreview(field, textareaId) {
-  const preview = document.getElementById(`submit-tag-preview-${aiSubmitTagFieldKey(field)}`);
   const overlay = document.getElementById(`submit-tag-overlay-${aiSubmitTagFieldKey(field)}`);
   const el = document.getElementById(textareaId);
   if (!el) return;
   const tags = (aiSubmitModalState.textTags || []).filter(item => item.field === field);
-  if (preview) preview.innerHTML = renderAiSubmitTaggedText(el.value, tags);
   if (overlay) {
     overlay.innerHTML = renderAiSubmitOverlayText(el.value, tags);
     overlay.classList.toggle('has-tags', normalizeAiSubmitTagsForText(el.value, tags).length > 0);
@@ -1988,7 +1977,7 @@ function removeAiSubmitTextTag(id) {
   if (item) {
     const tool = document.querySelector(`.aichat-submit-tag-tools[data-tag-field="${item.field}"]`);
     const fieldBox = tool ? tool.closest('.aichat-submit-field') : null;
-    const textarea = fieldBox ? fieldBox.querySelector('textarea[id]:not(.aichat-submit-note-input)') : (tool ? tool.previousElementSibling : null);
+    const textarea = fieldBox ? fieldBox.querySelector('textarea[id]:not(.aichat-submit-note-input):not(.aichat-submit-history-copy-input)') : (tool ? tool.previousElementSibling : null);
     renderAiSubmitTagList(item.field);
     if (textarea && textarea.id) renderAiSubmitTagPreview(item.field, textarea.id);
   }
@@ -2009,6 +1998,17 @@ function collectAiSubmitTextTags(fieldTextMap) {
     });
   });
   return result;
+}
+
+function renderAiSubmitRefField(idx, url) {
+  const safeUrl = escapeAiHtml(url || '');
+  const thumb = url
+    ? `<img src="${safeUrl}" alt="参考图" />`
+    : `<span class="aichat-submit-ref-empty">未设置参考图</span>`;
+  return `
+    <div class="aichat-submit-ref" id="submit-image-ref-${idx}" data-ref-url="${safeUrl}">
+      <div class="aichat-submit-ref-thumb">${thumb}</div>
+    </div>`;
 }
 
 function openAiSubmitModal(messageId) {
@@ -2044,6 +2044,10 @@ function openAiSubmitModal(messageId) {
               ${item.advantage ? `<span>${escapeAiHtml(item.advantage)}</span>` : ''}
             </div>
             <div class="aichat-submit-field">
+              <label>参考图</label>
+              ${renderAiSubmitRefField(idx, item.referenceImage || '')}
+            </div>
+            <div class="aichat-submit-field">
               <label for="submit-image-point-${idx}">卖点内容</label>
               <textarea id="submit-image-point-${idx}" data-image="${escapeAiHtml(item.image || '')}" rows="2">${escapeAiHtml(item.productPoint || '')}</textarea>
             </div>
@@ -2051,8 +2055,10 @@ function openAiSubmitModal(messageId) {
               <label for="submit-image-copy-${idx}">图片文案</label>
               <textarea id="submit-image-copy-${idx}" rows="3" oninput="renderAiSubmitTagPreview('${item.image || (idx === 0 ? '主图' : `图${idx + 1}`)}-图片文案', 'submit-image-copy-${idx}')">${escapeAiHtml(item.imageCopy || '')}</textarea>
               ${renderAiSubmitTagTools(`${item.image || (idx === 0 ? '主图' : `图${idx + 1}`)}-图片文案`, `submit-image-copy-${idx}`)}
-              <label class="aichat-submit-note-label" for="submit-image-note-${idx}">修改说明</label>
-              <textarea id="submit-image-note-${idx}" class="aichat-submit-note-input" rows="2" placeholder="说明这张图本次改了什么，例如：强化主图差异化，突出核心卖点和品牌识别。"></textarea>
+              <label for="submit-image-history-copy-${idx}">历史对比文案</label>
+              <textarea id="submit-image-history-copy-${idx}" class="aichat-submit-history-copy-input" rows="2" placeholder="填写上一版或竞品对比文案，便于审核对比本次改动">${escapeAiHtml(item.historyCopy || '')}</textarea>
+              <label class="aichat-submit-note-label" for="submit-image-note-${idx}">修改说明<span class="required">*</span></label>
+              <textarea id="submit-image-note-${idx}" class="aichat-submit-note-input" rows="2" placeholder="说明这张图本次改了什么，例如：强化主图差异化，突出核心卖点和品牌识别。" required></textarea>
             </div>
           </div>
         `).join('')}
@@ -2061,8 +2067,8 @@ function openAiSubmitModal(messageId) {
         <label for="submit-image-richtext">富文本</label>
         <textarea id="submit-image-richtext" rows="6" oninput="renderAiSubmitTagPreview('富文本', 'submit-image-richtext')">${escapeAiHtml(getAiImageCopyRichTextDefault())}</textarea>
         ${renderAiSubmitTagTools('富文本', 'submit-image-richtext')}
-        <label class="aichat-submit-note-label" for="submit-image-richtext-note">修改说明</label>
-        <textarea id="submit-image-richtext-note" class="aichat-submit-note-input" rows="2" placeholder="说明富文本本次改了什么，例如：补充使用场景和证据链，承接图片文案主线。"></textarea>
+        <label class="aichat-submit-note-label" for="submit-image-richtext-note">修改说明<span class="required">*</span></label>
+        <textarea id="submit-image-richtext-note" class="aichat-submit-note-input" rows="2" placeholder="说明富文本本次改了什么，例如：补充使用场景和证据链，承接图片文案主线。" required></textarea>
       </div>`;
   } else {
     const draft = parseAiListingDraft(m.text || '');
@@ -2073,9 +2079,9 @@ function openAiSubmitModal(messageId) {
           <div class="aichat-annotated-layer" id="submit-tag-overlay-Title" aria-hidden="true"></div>
           <textarea id="submit-title" class="aichat-annotated-textarea" rows="3" oninput="renderAiSubmitTagPreview('Title', 'submit-title')" onscroll="syncAiSubmitTagOverlayScroll('Title', 'submit-title')">${escapeAiHtml(draft.title)}</textarea>
         </div>
-        ${renderAiSubmitTagTools('Title', 'submit-title', { inlineOnly: true })}
-        <label class="aichat-submit-note-label" for="submit-title-note">修改说明</label>
-        <textarea id="submit-title-note" class="aichat-submit-note-input" rows="2" placeholder="填写本次修改说明"></textarea>
+        ${renderAiSubmitTagTools('Title', 'submit-title')}
+        <label class="aichat-submit-note-label" for="submit-title-note">修改说明<span class="required">*</span></label>
+        <textarea id="submit-title-note" class="aichat-submit-note-input" rows="2" placeholder="填写本次修改说明" required></textarea>
       </div>
       <div class="aichat-submit-td-list">
         ${draft.tds.map((td, idx) => `
@@ -2083,15 +2089,15 @@ function openAiSubmitModal(messageId) {
             <label for="submit-td-${idx}">TD-${idx + 1}</label>
             <textarea id="submit-td-${idx}" rows="4" oninput="renderAiSubmitTagPreview('TD-${idx + 1}', 'submit-td-${idx}')">${escapeAiHtml(td)}</textarea>
             ${renderAiSubmitTagTools(`TD-${idx + 1}`, `submit-td-${idx}`)}
-            <label class="aichat-submit-note-label" for="submit-td-note-${idx}">修改说明</label>
-            <textarea id="submit-td-note-${idx}" class="aichat-submit-note-input" rows="2" placeholder="填写本次修改说明"></textarea>
+            <label class="aichat-submit-note-label" for="submit-td-note-${idx}">修改说明<span class="required">*</span></label>
+            <textarea id="submit-td-note-${idx}" class="aichat-submit-note-input" rows="2" placeholder="填写本次修改说明" required></textarea>
           </div>
         `).join('')}
       </div>`;
   }
   body.querySelectorAll('.aichat-submit-tag-tools').forEach(tool => {
     const fieldBox = tool.closest('.aichat-submit-field');
-    const textarea = fieldBox ? fieldBox.querySelector('textarea[id]:not(.aichat-submit-note-input)') : tool.previousElementSibling;
+    const textarea = fieldBox ? fieldBox.querySelector('textarea[id]:not(.aichat-submit-note-input):not(.aichat-submit-history-copy-input)') : tool.previousElementSibling;
     const field = tool.getAttribute('data-tag-field');
     if (textarea && textarea.id && field) renderAiSubmitTagPreview(field, textarea.id);
   });
@@ -2105,6 +2111,13 @@ function closeAiSubmitModal() {
   aiSubmitModalState = { sourceMessageId: null };
 }
 
+function requireAiSubmitNote(value, label, focusEl) {
+  if (String(value || '').trim()) return true;
+  showToast(`请填写${label}的修改说明`, 'warning');
+  if (focusEl) focusEl.focus();
+  return false;
+}
+
 function confirmAiSubmitReview() {
   if (aiSubmitModalState.mode === 'imageCopy') {
     const cards = Array.from(document.querySelectorAll('.aichat-submit-image-card'));
@@ -2112,12 +2125,16 @@ function confirmAiSubmitReview() {
       const image = (card.querySelector('.aichat-submit-image-head strong') || {}).textContent || (idx === 0 ? '主图' : `图${idx + 1}`);
       const pointEl = card.querySelector(`#submit-image-point-${idx}`);
       const copyEl = card.querySelector(`#submit-image-copy-${idx}`);
+      const historyCopyEl = card.querySelector(`#submit-image-history-copy-${idx}`);
       const noteEl = card.querySelector(`#submit-image-note-${idx}`);
+      const refEl = card.querySelector(`#submit-image-ref-${idx}`);
       return {
         image: image.trim(),
         productPoint: pointEl ? pointEl.value.trim() : '',
         imageCopy: copyEl ? copyEl.value.trim() : '',
+        historyCopy: historyCopyEl ? historyCopyEl.value.trim() : '',
         note: noteEl ? noteEl.value.trim() : '',
+        referenceImage: refEl ? (refEl.dataset.refUrl || '') : '',
       };
     });
     const firstEmpty = imageCopies.findIndex(item => !item.productPoint && !item.imageCopy);
@@ -2127,8 +2144,14 @@ function confirmAiSubmitReview() {
       if (target) target.focus();
       return;
     }
+    const firstEmptyNote = imageCopies.findIndex(item => !item.note);
+    if (firstEmptyNote >= 0) {
+      const imageName = imageCopies[firstEmptyNote].image || (firstEmptyNote === 0 ? '主图' : `图${firstEmptyNote + 1}`);
+      if (!requireAiSubmitNote(imageCopies[firstEmptyNote].note, imageName, document.getElementById(`submit-image-note-${firstEmptyNote}`))) return;
+    }
     const richTextEl = document.getElementById('submit-image-richtext');
     const richTextNoteEl = document.getElementById('submit-image-richtext-note');
+    if (!requireAiSubmitNote(richTextNoteEl ? richTextNoteEl.value : '', '富文本', richTextNoteEl)) return;
     const fieldTextMap = imageCopies.reduce((acc, item) => {
       acc[`${item.image}-图片文案`] = item.imageCopy;
       return acc;
@@ -2169,6 +2192,11 @@ function confirmAiSubmitReview() {
     if (el) el.focus();
     return;
   }
+  if (!requireAiSubmitNote(titleNoteEl ? titleNoteEl.value : '', 'Title', titleNoteEl)) return;
+  const emptyNoteIdx = tdNotes.findIndex(v => !v);
+  if (emptyNoteIdx >= 0) {
+    if (!requireAiSubmitNote(tdNotes[emptyNoteIdx], `TD-${emptyNoteIdx + 1}`, document.getElementById(`submit-td-note-${emptyNoteIdx}`))) return;
+  }
   const fieldTextMap = tds.reduce((acc, td, i) => {
     acc[`TD-${i + 1}`] = td;
     return acc;
@@ -2204,7 +2232,7 @@ function submitAiMessage(messageId, payload = null) {
   showToast('已提交审核，审核结果会以站内通知反馈', 'success');
   let text = `✅ 已提交审核\n\nSKU：${aiChatState.sku}\n提交人：${getCurrentUserInitial()}（Mason）\n时间：${new Date().toLocaleString('zh-CN')}`;
   if (payload && payload.type === 'imageCopy') {
-    text += `\n\n${payload.imageCopies.map(item => `【${item.image}】\n卖点内容：${item.productPoint || '—'}\n图片文案：${item.imageCopy || '—'}${item.note ? `\n修改说明：${item.note}` : ''}`).join('\n\n')}`;
+    text += `\n\n${payload.imageCopies.map(item => `【${item.image}】\n卖点内容：${item.productPoint || '—'}\n图片文案：${item.imageCopy || '—'}${item.historyCopy ? `\n历史对比文案：${item.historyCopy}` : ''}${item.note ? `\n修改说明：${item.note}` : ''}`).join('\n\n')}`;
     if (payload.richText) {
       text += `\n\n【富文本】\n${payload.richText}${payload.richTextNote ? `\n\n修改说明：${payload.richTextNote}` : ''}`;
     }
@@ -2605,7 +2633,7 @@ function renderRowActions(r, rowIdx) {
       extra = `${div}<button class="row-action-btn" onclick="rowAction('reject_log_readonly','${sku}')">驳回记录</button>`;
       break;
     case '待处理':
-      return `<div class="row-actions"><button class="row-action-btn warn" onclick="event.stopPropagation();openAiChat('${sku}', '')">文案生成</button>${div}<button class="row-action-btn warn" onclick="rowAction('change','${sku}',${idx})">变更</button></div>`;
+      return `<div class="row-actions"><button class="row-action-btn warn" onclick="rowAction('change','${sku}',${idx})">变更</button></div>`;
     case '处理中':
       extra = `${div}<button class="row-action-btn warn" onclick="rowAction('change','${sku}',${idx})">变更</button>`;
       break;

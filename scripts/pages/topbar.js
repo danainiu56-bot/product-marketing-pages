@@ -24,7 +24,7 @@ function fillStaticIcons() {
   set('step1-card-icon', I('product', 18));
   set('stage-icon-new', I('plus', 22));
   set('stage-icon-old', I('refresh', 22));
-  set('step1-next-btn', `<span>下一步：上传文件</span>${I('arrowR', 14)}`);
+  set('step1-next-btn', `<span>下一步：上传附件</span>${I('arrowR', 14)}`);
   // Step 2
   set('step2-card-icon', I('upload', 18));
   set('summary-label', `${I('checkc', 14)}<span>基础信息确认</span>`);
@@ -38,7 +38,7 @@ function fillStaticIcons() {
   set('download-template-btn', `${I('download', 14)}<span>下载模板</span>`);
   set('upload-icon', IL('upload', 36));
   set('uploaded-file-icon', IL('template', 22));
-  set('start-parse-btn', `${I('search', 16)}<span>开始解析</span>`);
+  set('start-parse-btn', `${I('check', 16)}<span>开始解析</span>`);
   set('step2-prev-btn', `${I('arrowL', 14)}<span>上一步</span>`);
   // 解析中
   set('parsing-icon-inner', IL('brain', 22));
@@ -50,7 +50,7 @@ function fillStaticIcons() {
   set('nav-title-text', `${I('bullets', 14)}<span>内容大纲</span>`);
   set('result-footer-back-btn', `${I('arrowL', 14)}<span>返回修改</span>`);
   set('create-demand-btn', `${I('plus', 14)}<span>创建需求</span>`);
-  set('result-footer-submit-btn', `${I('check', 14)}<span>确认提交审核</span>`);
+  set('result-footer-submit-btn', `${I('check', 14)}<span>确认提交</span>`);
   // 弹窗
   set('modal-close-btn', I('close', 14));
   set('modal-copy-btn', `${I('copy', 14)}<span>复制内容</span>`);

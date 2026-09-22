@@ -130,6 +130,34 @@ function restoreSavedView() {
   }
 }
 
+// ----- handleIpdDeepLink -----
+function handleIpdDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  if ((params.get('source') || '').toLowerCase() !== 'ipd') return false;
+  const externalId = params.get('externalId');
+  if (!externalId) {
+    showToast('缺少 externalId 参数', 'warning');
+    return true;
+  }
+  goToList();
+  if (typeof showCopywritingView === 'function') showCopywritingView();
+  const row = typeof findIpdDemandByExternalId === 'function'
+    ? findIpdDemandByExternalId(externalId)
+    : LIST_DATA.find(r => r.externalId === externalId);
+  if (!row) {
+    showToast(`未找到 IPD 需求：${externalId}`, 'warning');
+    return true;
+  }
+  filterSourceValue = 'IPD';
+  const srcEl = document.getElementById('f-source');
+  if (srcEl) srcEl.value = 'IPD';
+  applyFilters();
+  setTimeout(() => {
+    if (typeof openIpdDossierDrawer === 'function') openIpdDossierDrawer(row);
+  }, 200);
+  return true;
+}
+
 // ----- goToList -----
 function goToList() {
   document.getElementById('list-page').classList.add('show');

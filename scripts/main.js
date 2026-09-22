@@ -17,7 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPersonValueOptions('writer');
   renderListTable();
   if (typeof renderCfPersonValueOptions === 'function') renderCfPersonValueOptions('writer');
-  if (typeof renderCopyListTable === 'function') renderCopyListTable();
+  if (typeof applyCopyFilters === 'function') applyCopyFilters();
+  else if (typeof renderCopyListTable === 'function') renderCopyListTable();
 
   // 需求类型选择器
   renderBizGrid();
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 加载子品类（API），完成后再恢复视图
   loadSubCategories().finally(() => {
+    if (typeof handleIpdDeepLink === 'function' && handleIpdDeepLink()) return;
     restoreSavedView();
   });
 });

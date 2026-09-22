@@ -34,14 +34,10 @@ function decodeReviewKey(encodedKey) {
 }
 
 function getReviewListData() {
-  const statusMap = {
-    '待处理': '待审核',
-    '待审核': '待审核',
-    '已驳回': '已驳回',
-    '已通过': '已通过',
-  };
   const decisions = readReviewDecisions();
-  return (typeof COPY_LIST_DATA !== 'undefined' ? COPY_LIST_DATA : []).map((row, idx) => {
+  const source = (typeof LIST_DATA !== 'undefined' ? LIST_DATA : [])
+    .filter(row => row.status === '待审核' || row.status === '已驳回');
+  return source.map((row, idx) => {
     const normalized = {
       ...row,
       submit_time: row.submit_time || '2026/02/12 12:23:43',
@@ -57,12 +53,12 @@ function getReviewListData() {
     return {
       ...normalized,
       review_key: reviewKey,
-      review_status: decision ? decision.status : (statusMap[row.status] || '待审核'),
+      review_status: decision ? decision.status : (row.status === '已驳回' ? '已驳回' : '待审核'),
       review_time: latestEntry ? latestEntry.time : (decision ? decision.time : (row.review_time || '—')),
       reject_reason: latestEntry ? (latestEntry.reason || '') : (decision ? (decision.reason || '') : ''),
       decision_record: decision || fallbackRecord,
     };
-  });
+  }).filter(row => row.review_status === '待审核' || row.review_status === '已驳回');
 }
 
 function renderReviewMgrView() {

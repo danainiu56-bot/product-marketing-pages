@@ -678,6 +678,17 @@
   .row-action-btn.warn:hover { background: #fef3c7; }
   .row-action-btn.success { color: var(--success); }
   .row-action-btn.success:hover { background: #d1fae5; }
+  .row-action-btn.disabled,
+  .row-action-btn:disabled {
+    color: var(--text-muted);
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .row-action-btn.disabled:hover,
+  .row-action-btn:disabled:hover {
+    background: transparent;
+  }
   .row-action-divider {
     width: 1px;
     height: 12px;

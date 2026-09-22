@@ -16,6 +16,24 @@ const LIST_DATA = [
   { type: '新品Listing', site: 'US', brand: 'AMOOS', sub: '贴片', name: '背光小夜灯',       sku: 'PO17X4011', bu: '家居关怀', bu_lead: 'Suki', op: 'Liz',   writer: 'Brian', status: '已完成', submit_time: '2026/02/10 14:50:11', launch_date: '2026/02/27', date: '2026/02/12' },
   { type: '新品卖点视频', site: 'UK', brand: 'AUVON', sub: '药盒', name: '7格旅行药盒',   sku: 'PO19A2210', bu: '物理治疗', bu_lead: 'Suki', op: 'Tina',  writer: 'Lucy',  status: '待审核', submit_time: '2026/02/11 08:42:55', date: '2026/02/14' },
   { type: '老品TD',       site: 'UK', brand: 'ZIKEE', sub: '电疗', name: '理疗仪豪华版',   sku: 'PO19B5621', bu: '北美市场', bu_lead: 'Suki', op: 'Tina',  writer: 'Lucy',  status: '已驳回', submit_time: '2026/02/11 15:33:04', date: '2026/02/14' },
+  {
+    type: '新品包装盒', site: 'US', brand: 'AUVON', sub: '药盒', name: '7格便携药盒', sku: 'PO17X4011',
+    bu: '物理治疗', bu_lead: 'Suki', op: 'Jessi', writer: 'Yumi', status: '待处理',
+    submit_time: '2026/09/01 09:15:00', launch_date: '2026/09/20', date: '2026/09/03',
+    source: 'IPD', externalId: 'IPD-2026-0001', dossierId: 'DS-PO17X4011-PKG', projectId: 'PRJ-PILL-001', drStage: 'DR2',
+  },
+  {
+    type: '新品说明书', site: 'US', brand: 'AUVON', sub: '药盒', name: '7格便携药盒', sku: 'PO17X4011',
+    bu: '物理治疗', bu_lead: 'Suki', op: 'Jessi', writer: 'Yumi', status: '处理中',
+    submit_time: '2026/09/02 14:30:00', launch_date: '2026/09/22', date: '2026/09/03',
+    source: 'IPD', externalId: 'IPD-2026-0002', dossierId: 'DS-PO17X4011-MNL', projectId: 'PRJ-PILL-001', drStage: 'DR2',
+  },
+  {
+    type: '新品包装盒', site: 'DE', brand: 'AUVON', sub: '药盒', name: '7格便携药盒', sku: 'PO17X4011-DE',
+    bu: '物理治疗', bu_lead: 'Suki', op: 'Sam', writer: 'Mike', status: '待审核',
+    submit_time: '2026/09/03 10:00:00', launch_date: '2026/09/25', date: '2026/09/03',
+    source: 'IPD', externalId: 'IPD-2026-0003', dossierId: 'DS-PO17X4011-DE-PKG', projectId: 'PRJ-PILL-001', drStage: 'DR2',
+  },
 ];
 
 const LISTING_SEO_KEYWORDS = [
